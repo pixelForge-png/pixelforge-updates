@@ -1,1 +1,27 @@
-
+{
+  "system_version": "1.0.0",
+  "files": [
+    {
+      "path": "games/__init__.py",
+      "version": "1.0.0"
+    },
+    {
+      "path": "games/test_game.py",
+      "version": "1.0.0"
+    },
+    {
+      "path": "games/block_falling.py",
+      "version": "1.0.0"
+    }
+  ],
+  "games": [
+    {
+      "name": "Test Game",
+      "module": "games.test_game"
+    },
+    {
+      "name": "Block Falling",
+      "module": "games.block_falling"
+    }
+  ]
+}
