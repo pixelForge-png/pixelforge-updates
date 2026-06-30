@@ -7,6 +7,7 @@
       "file": "games/pixel_swarm.py",
       "module": "games.pixel_swarm",
       "version": 1,
+      "channel": "release"
       "url": "https://raw.githubusercontent.com/pixelForge-png/pixelforge-updates/main/games/pixel_swarm.py"
     },
     {
@@ -15,6 +16,7 @@
       "file": "games/pong.py",
       "module": "games.pong",
       "version": 1,
+      "channel": "release"
       "url": "https://raw.githubusercontent.com/pixelForge-png/pixelforge-updates/main/games/pong.py"
     }
   ]
