@@ -3,7 +3,7 @@ from st7735_fb import ST7735FB
 import time
 import random
 from buzzer_sounds import sound
-from oled_functions import (
+from oled_functions_test import (
     BLACK, WHITE, GRAY, DARK_GRAY, RED, GREEN, BLUE, YELLOW, CYAN, MAGENTA,
     ORANGE, PURPLE, HEALTH_GREEN, DANGER_RED, SHIELD_BLUE, SPACE_BLACK,
     ENEMY_BULLET, PLAYER_BULLET, LASER_COLOR, FREEZE_COLOR, BOMB_COLOR,
