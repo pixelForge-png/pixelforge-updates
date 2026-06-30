@@ -1,27 +1,21 @@
 {
-  "system_version": "1.0.0",
-  "files": [
-    {
-      "path": "games/__init__.py",
-      "version": "1.0.0"
-    },
-    {
-      "path": "games/test_game.py",
-      "version": "1.0.2"
-    },
-    {
-      "path": "games/block_falling.py",
-      "version": "1.0.0"
-    }
-  ],
+  "system_version": 1,
   "games": [
     {
-      "name": "Test Game",
-      "module": "games.test_game"
+      "id": "pixel_swarm",
+      "title": "Pixel Swarm",
+      "file": "games/pixel_swarm.py",
+      "module": "games.pixel_swarm",
+      "version": 1,
+      "url": "https://raw.githubusercontent.com/pixelForge-png/pixelforge-updates/main/games/pixel_swarm.py"
     },
     {
-      "name": "Block Falling",
-      "module": "games.block_falling"
+      "id": "pong",
+      "title": "Pong",
+      "file": "games/pong.py",
+      "module": "games.pong",
+      "version": 1,
+      "url": "https://raw.githubusercontent.com/pixelForge-png/pixelforge-updates/main/games/pong.py"
     }
   ]
 }
