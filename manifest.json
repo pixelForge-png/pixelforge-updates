@@ -10,24 +10,6 @@
       "channel": "release",
       "url": "https://raw.githubusercontent.com/pixelForge-png/pixelforge-updates/main/games/pixel_swarm.py"
     },
-    {
-      "id": "pong",
-      "title": "Pong",
-      "file": "games/pong.py",
-      "module": "games.pong",
-      "version": 1,
-      "channel": "release",
-      "url": "https://raw.githubusercontent.com/pixelForge-png/pixelforge-updates/main/games/pong.py"
-    },
-    {
-      "id": "test_game",
-      "title": "Pixel Swarm Test",
-      "file": "games/test_game.py",
-      "module": "games.test_game",
-      "version": 1,
-      "channel": "dev",
-      "url": "https://raw.githubusercontent.com/pixelForge-png/pixelforge-updates/main/games/test_game.py"
-    }
   ],
   "helpers": [
     {
@@ -36,7 +18,7 @@
       "file": "helpers/oled_functions_test.py",
       "module": "helpers.oled_functions_test",
       "version": 2,
-      "channel": "dev",
+      "channel": "release",
       "url": "https://raw.githubusercontent.com/pixelForge-png/pixelforge-updates/main/helpers/oled_functions_test.py"
     }
   ]
