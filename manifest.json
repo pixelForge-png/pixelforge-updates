@@ -19,7 +19,7 @@
       "channel": "release",
       "url": "https://raw.githubusercontent.com/pixelForge-png/pixelforge-updates/main/games/pong.py"
     }
-  ]
+  ],
   "tests": [
     {
       "id": "pixel_swarm_test",
@@ -30,7 +30,7 @@
       "channel": "dev",
       "url": "https://raw.githubusercontent.com/pixelForge-png/pixelforge-updates/main/tests/pixel_swarm_test.py"
     }
-  ]
+  ],
   "helpers": [
     {
       "id": "oled_functions_test",
