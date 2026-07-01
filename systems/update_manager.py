@@ -138,6 +138,7 @@ def check_for_updates(screen_status=None):
     ensure_folder("/helpers")
 
     manifest = download_manifest(screen_status)
+    game_info = settings_manager.load_game_info()
 
     if manifest == None:
         return []
@@ -184,6 +185,12 @@ def check_for_updates(screen_status=None):
             continue
 
         visible_games.append(game)
+        
+        game_info[game["id"]] = {
+            "title": game.get("title", game["id"]),
+            "display_version": game.get("display_version", str(game["version"])),
+            "channel": game.get("channel", "release")
+        }
 
         game_id = game["id"]
         title = game["title"]
@@ -216,7 +223,8 @@ def check_for_updates(screen_status=None):
                 if screen_status:
                     screen_status("DL FAILED", title[:16], str(e)[:16])
                     time.sleep(2)
-
+    
+    settings_manager.save_game_info(game_info)
     settings_manager.save_versions(versions)
 
     if screen_status:
