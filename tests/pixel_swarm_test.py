@@ -3,7 +3,7 @@ from st7735_fb import ST7735FB
 import time
 import random
 from buzzer_sounds import sound
-from oled_functions_test import (
+from helpers.oled_functions_test import (
     BLACK, WHITE, GRAY, DARK_GRAY, RED, GREEN, BLUE, YELLOW, CYAN, MAGENTA,
     ORANGE, PURPLE, HEALTH_GREEN, DANGER_RED, SHIELD_BLUE, SPACE_BLACK,
     ENEMY_BULLET, PLAYER_BULLET, LASER_COLOR, FREEZE_COLOR, BOMB_COLOR,
@@ -478,475 +478,475 @@ def swarm_info():
         time.sleep(0.05)
 
 highscore = load_highscore()
-
-while True:
+def main(oled, controls, settings):
     while True:
-        oled.fill(SPACE_BLACK)
-        center_text_x(oled, "PIXEL SWARM", 8, CYAN, SCREEN_W)
-        center_text_x(oled, "GREEN START", 36, GREEN, SCREEN_W)
-        center_text_x(oled, "YELLOW INFO", 54, YELLOW, SCREEN_W)
-        show_display(oled)
-        if button_Y.value() == 0:
-            wait_for_release(button_Y)
-            swarm_info()
-        if button_G.value() == 0:
-            wait_for_release(button_G)
-            break
-        time.sleep(0.05)
-
-    transition(oled, 1)
-    transition(oled, 0)
-
-    enemy_direction = 1
-    start_time = time.ticks_ms()
-    level = 1
-    enemies = make_level(oled, levels, level, SCREEN_W)
-    player_speed = 2
-    enemy_move_delay = 1
-    enemy_move_timer = 0
-    enemy_drop_timer = 0
-    shot_count = 1
-    bullet_speed = 2
-    bullet_damage = 1
-    max_player_bullets = MAX_PLAYER_BULLETS
-    laser_bonus = 0
-    freeze_bonus = 0
-    bomb_bonus = 0
-    overdrive_timer = 0
-    shoot_delay = 14
-    shoot_timer = 0
-    boss_fight = False
-    boss = None
-    special_ability = None
-    special_ready = True
-    special_cooldown = 0
-    special_cooldown_max = 45
-    special_last_second = time.ticks_ms()
-    shield = 0
-    laser_timer = 0
-    freeze_timer = 0
-    was_a_boss_fight = False
-    bullets = []
-    enemy_bullets = []
-    lives = 3
-    player_x = 76
-    player_y = 70
-    score = 0
-    invincible = 0
-
-    while True:
-        if freeze_timer > 0:
-            freeze_timer -= 1
-        new_enemy_bullets = []
-
-        if lives <= 0:
-            oled.fill(BLACK)
-            live_time = time.ticks_diff(time.ticks_ms(), start_time) // 1000
-            center_text_x(oled, "YOU LOST", 8, RED, SCREEN_W)
-            center_text_x(oled, "SCORE " + str(score), 26, WHITE, SCREEN_W)
-            center_text_x(oled, str(live_time) + " SECONDS", 42, CYAN, SCREEN_W)
-            if highscore is None or score > highscore:
-                highscore = score
-                save_highscore(highscore)
-                center_text_x(oled, "NEW HIGH SCORE", 58, YELLOW, SCREEN_W)
-            else:
-                center_text_x(oled, "BEST " + str(highscore), 58, YELLOW, SCREEN_W)
+        while True:
+            oled.fill(SPACE_BLACK)
+            center_text_x(oled, "PIXEL SWARM", 8, CYAN, SCREEN_W)
+            center_text_x(oled, "GREEN START", 36, GREEN, SCREEN_W)
+            center_text_x(oled, "YELLOW INFO", 54, YELLOW, SCREEN_W)
             show_display(oled)
-            time.sleep(5)
-            break
-
-        if enemies == [] and boss_fight == False:
-            level += 1
-            if level > len(levels):
-                level = len(levels)
-            oled.fill(BLACK)
-            center_text_x(oled, "LEVEL " + str(level), 28, YELLOW, SCREEN_W)
-            show_display(oled)
-            time.sleep(1)
-            if level % 5 == 0:
-                boss_fight = True
-                boss = harden_boss(make_boss_for_level(bosses, level), level)
-                enemies = []
-            else:
-                boss_fight = False
-                enemies = make_level(oled, levels, level, SCREEN_W)
-                if was_a_boss_fight != True and level % 2 == 0:
-                    player_choice = upgrades(oled, all_upgrades, button_B, button_G, button_R, button_Y)
-                    if player_choice != None:
-                        if player_choice[0] == "Player Speed":
-                            player_speed += 1
-                        elif player_choice[0] == "Bullet Speed":
-                            bullet_speed += 1
-                        elif player_choice[0] == "Extra Shot":
-                            shot_count += 1
-                        elif player_choice[0] == "Extra Life":
-                            lives += 1
-                        elif player_choice[0] == "Slower Enemies":
-                            enemy_move_delay += 1
-                        elif player_choice[0] == "Faster Shots":
-                            if shoot_delay > 5:
-                                shoot_delay -= 1
-                        elif player_choice[0] == "Bullet Damage":
-                            bullet_damage += 1
-                        elif player_choice[0] == "Max Bullets":
-                            max_player_bullets += 2
-                        elif player_choice[0] == "Rapid Charge":
-                            if special_cooldown_max > 15:
-                                special_cooldown_max -= 5
-                        elif player_choice[0] == "Longer Laser":
-                            laser_bonus += 5
-                        elif player_choice[0] == "Longer Freeze":
-                            freeze_bonus += 10
-                        elif player_choice[0] == "Stronger Bomb":
-                            bomb_bonus += 2
-                was_a_boss_fight = False
-            bullets = []
-            enemy_bullets = []
-
-        # Joystick movement: X and Y movement.
-        # The top limit stops the player from getting behind enemy rows.
-        left, right, up, down, raw_x, raw_y = joystick_direction(JOY_X, JOY_Y)
-        player_top_limit = get_player_top_limit(enemies, boss_fight, boss)
-
-        if left and player_x > 0:
-            player_x -= player_speed
-        elif right and player_x < SCREEN_W - 8:
-            player_x += player_speed
-
-        if up and player_y > player_top_limit:
-            player_y -= player_speed
-        elif down and player_y < SCREEN_H - 8:
-            player_y += player_speed
-
-        if player_y < player_top_limit:
-            player_y = player_top_limit
-
-        # Auto shoot
-        if overdrive_timer > 0:
-            overdrive_timer -= 1
-            current_shoot_delay = max(3, shoot_delay // 2)
-        else:
-            current_shoot_delay = shoot_delay
-
-        shoot_timer += 1
-        if shoot_timer >= current_shoot_delay:
-            shoot_timer = 0
-            center_x = player_x + 3
-            for i in range(shot_count):
-                if len(bullets) >= max_player_bullets:
-                    break
-                offset = int((i - (shot_count - 1) / 2) * 4)
-                bullets.append([center_x + offset, player_y - 3])
-
-        # Special ability with joystick press
-        if button_G.value() == 0 and special_ready == True and special_ability != None:
-            if special_ability == "Laser":
-                laser_timer = 12 + laser_bonus
-            elif special_ability == "Shield":
-                shield = 1
-            elif special_ability == "Bomb":
-                enemies = []
-                if boss_fight and boss != None:
-                    boss[4] -= 3 + bomb_bonus
-                oled.fill(BOMB_COLOR)
-                show_display(oled)
-                time.sleep(0.25)
-            elif special_ability == "Freeze":
-                freeze_timer = 50 + freeze_bonus
-            elif special_ability == "Heal":
-                lives += 1
-            elif special_ability == "Pulse":
-                enemy_bullets = []
-                for enemy in enemies:
-                    enemy[2] -= 1 + bullet_damage // 2
-                if boss_fight and boss != None:
-                    boss[4] -= 2 + bullet_damage
-            elif special_ability == "Missile":
-                if boss_fight and boss != None:
-                    boss[4] -= 8 + bullet_damage * 2
-                elif enemies:
-                    target_enemy = enemies[0]
-                    for enemy in enemies:
-                        if enemy[1] > target_enemy[1]:
-                            target_enemy = enemy
-                    target_enemy[2] = 0
-            elif special_ability == "Overdrive":
-                overdrive_timer = 100
-            special_ready = False
-            special_cooldown = special_cooldown_max
-            special_last_second = time.ticks_ms()
-            wait_for_release(button_G)
-
-        # Cooldown once per second
-        if special_ready == False:
-            now = time.ticks_ms()
-            if time.ticks_diff(now, special_last_second) >= 1000:
-                special_last_second = now
-                special_cooldown -= 1
-                if special_cooldown <= 0:
-                    special_cooldown = 0
-                    special_ready = True
-
-        oled.fill(SPACE_BLACK)
-
-        # Boss
-        if boss_fight == True:
-            boss, bullets = update_boss(oled, boss, bullets, bullet_speed, freeze_timer, GAME_PALETTE, bullet_damage)
-            if boss != None:
-                boss_lives = boss[4]
-                boss_max_lives = boss[5]
-                oled.rect(25, 0, 110, 6, WHITE)
-                health_width = int((boss_lives / boss_max_lives) * 108)
-                if health_width < 0:
-                    health_width = 0
-                oled.fill_rect(26, 1, health_width, 4, HEALTH_GREEN)
-                for b in bullets:
-                    draw_color_sprite(oled, bullet, b[0], b[1], PLAYER_BULLET_PALETTE)
-                if freeze_timer <= 0:
-                    boss[9] += 1
-                    if boss[9] >= boss[7]:
-                        boss[9] = 0
-                        enemy_bullets = boss_attack(enemy_bullets, boss, player_x + 4, player_y + 4, 2 + level // 8)
-            if boss == None:
-                boss_fight = False
-                was_a_boss_fight = True
-                bullets = []
-                enemy_bullets = []
-                score += 250
+            if button_Y.value() == 0:
+                wait_for_release(button_Y)
+                swarm_info()
+            if button_G.value() == 0:
+                wait_for_release(button_G)
+                break
+            time.sleep(0.05)
+    
+        transition(oled, 1)
+        transition(oled, 0)
+    
+        enemy_direction = 1
+        start_time = time.ticks_ms()
+        level = 1
+        enemies = make_level(oled, levels, level, SCREEN_W)
+        player_speed = 2
+        enemy_move_delay = 1
+        enemy_move_timer = 0
+        enemy_drop_timer = 0
+        shot_count = 1
+        bullet_speed = 2
+        bullet_damage = 1
+        max_player_bullets = MAX_PLAYER_BULLETS
+        laser_bonus = 0
+        freeze_bonus = 0
+        bomb_bonus = 0
+        overdrive_timer = 0
+        shoot_delay = 14
+        shoot_timer = 0
+        boss_fight = False
+        boss = None
+        special_ability = None
+        special_ready = True
+        special_cooldown = 0
+        special_cooldown_max = 45
+        special_last_second = time.ticks_ms()
+        shield = 0
+        laser_timer = 0
+        freeze_timer = 0
+        was_a_boss_fight = False
+        bullets = []
+        enemy_bullets = []
+        lives = 3
+        player_x = 76
+        player_y = 70
+        score = 0
+        invincible = 0
+    
+        while True:
+            if freeze_timer > 0:
+                freeze_timer -= 1
+            new_enemy_bullets = []
+    
+            if lives <= 0:
                 oled.fill(BLACK)
-                center_text_x(oled, "BOSS DEFEATED", 25, YELLOW, SCREEN_W)
+                live_time = time.ticks_diff(time.ticks_ms(), start_time) // 1000
+                center_text_x(oled, "YOU LOST", 8, RED, SCREEN_W)
+                center_text_x(oled, "SCORE " + str(score), 26, WHITE, SCREEN_W)
+                center_text_x(oled, str(live_time) + " SECONDS", 42, CYAN, SCREEN_W)
+                if highscore is None or score > highscore:
+                    highscore = score
+                    save_highscore(highscore)
+                    center_text_x(oled, "NEW HIGH SCORE", 58, YELLOW, SCREEN_W)
+                else:
+                    center_text_x(oled, "BEST " + str(highscore), 58, YELLOW, SCREEN_W)
+                show_display(oled)
+                time.sleep(5)
+                break
+    
+            if enemies == [] and boss_fight == False:
+                level += 1
+                if level > len(levels):
+                    level = len(levels)
+                oled.fill(BLACK)
+                center_text_x(oled, "LEVEL " + str(level), 28, YELLOW, SCREEN_W)
                 show_display(oled)
                 time.sleep(1)
-                boss_choice = upgrades(oled, boss_upgrades, button_B, button_G, button_R, button_Y)
-                if boss_choice != None:
-                    special_ability = boss_choice[0]
-                    special_ready = True
-                    special_cooldown = 0
-
-        # Shield and player
-        if shield > 0:
-            shield_x = player_x - 2
-            if shield_x < 0:
-                shield_x = 0
-            elif shield_x > SCREEN_W - 12:
-                shield_x = SCREEN_W - 12
-            draw_color_sprite(oled, shield_sprite, shield_x, player_y - 2, GAME_PALETTE)
-        draw_color_sprite(oled, player, player_x, player_y, GAME_PALETTE)
-
-        # UI
-        for i in range(lives):
-            draw_color_sprite(oled, life_ship, i * 8, 0, GAME_PALETTE)
-        draw_tiny_text(oled, str(score), 40, 0, WHITE)
-        if special_ability != None:
-            draw_special_icon(oled, special_ability)
-            if special_ready:
-                draw_tiny_text(oled, "R", 140, 10, GREEN)
+                if level % 5 == 0:
+                    boss_fight = True
+                    boss = harden_boss(make_boss_for_level(bosses, level), level)
+                    enemies = []
+                else:
+                    boss_fight = False
+                    enemies = make_level(oled, levels, level, SCREEN_W)
+                    if was_a_boss_fight != True and level % 2 == 0:
+                        player_choice = upgrades(oled, all_upgrades, button_B, button_G, button_R, button_Y)
+                        if player_choice != None:
+                            if player_choice[0] == "Player Speed":
+                                player_speed += 1
+                            elif player_choice[0] == "Bullet Speed":
+                                bullet_speed += 1
+                            elif player_choice[0] == "Extra Shot":
+                                shot_count += 1
+                            elif player_choice[0] == "Extra Life":
+                                lives += 1
+                            elif player_choice[0] == "Slower Enemies":
+                                enemy_move_delay += 1
+                            elif player_choice[0] == "Faster Shots":
+                                if shoot_delay > 5:
+                                    shoot_delay -= 1
+                            elif player_choice[0] == "Bullet Damage":
+                                bullet_damage += 1
+                            elif player_choice[0] == "Max Bullets":
+                                max_player_bullets += 2
+                            elif player_choice[0] == "Rapid Charge":
+                                if special_cooldown_max > 15:
+                                    special_cooldown_max -= 5
+                            elif player_choice[0] == "Longer Laser":
+                                laser_bonus += 5
+                            elif player_choice[0] == "Longer Freeze":
+                                freeze_bonus += 10
+                            elif player_choice[0] == "Stronger Bomb":
+                                bomb_bonus += 2
+                    was_a_boss_fight = False
+                bullets = []
+                enemy_bullets = []
+    
+            # Joystick movement: X and Y movement.
+            # The top limit stops the player from getting behind enemy rows.
+            left, right, up, down, raw_x, raw_y = joystick_direction(JOY_X, JOY_Y)
+            player_top_limit = get_player_top_limit(enemies, boss_fight, boss)
+    
+            if left and player_x > 0:
+                player_x -= player_speed
+            elif right and player_x < SCREEN_W - 8:
+                player_x += player_speed
+    
+            if up and player_y > player_top_limit:
+                player_y -= player_speed
+            elif down and player_y < SCREEN_H - 8:
+                player_y += player_speed
+    
+            if player_y < player_top_limit:
+                player_y = player_top_limit
+    
+            # Auto shoot
+            if overdrive_timer > 0:
+                overdrive_timer -= 1
+                current_shoot_delay = max(3, shoot_delay // 2)
             else:
-                draw_tiny_text(oled, str(special_cooldown), 136, 10, YELLOW)
-
-        # Laser
-        if laser_timer > 0:
-            oled.fill_rect(player_x + 3, 0, 2, player_y, LASER_COLOR)
-            laser_timer -= 1
-            new_enemies = []
-            for enemy in enemies:
-                if player_x + 3 < enemy[0] + 8 and player_x + 5 > enemy[0]:
-                    enemy[2] -= 1
-                if enemy[2] > 0:
-                    new_enemies.append(enemy)
-                else:
-                    score += 10
-            enemies = new_enemies
-            if boss_fight and boss != None:
-                if player_x + 3 < boss[2] + 16 and player_x + 5 > boss[2]:
-                    boss[4] -= 1
-
-        # Player bullets against normal enemies
-        new_bullets = []
-        if boss_fight == False:
-            for b in bullets:
-                b[1] -= bullet_speed
-                enemies, bullet_hit, hit_x, hit_y, points_gained, death_shots = update_enimies(enemies, b[0], b[1], bullet_damage)
-                score += points_gained
-                for shot in death_shots:
-                    if len(enemy_bullets) < MAX_ENEMY_BULLETS:
-                        enemy_bullets.append(make_aimed_enemy_bullet(shot[0], shot[1], player_x + 4, player_y + 4, 2 + level // 10))
-                    if len(enemy_bullets) < MAX_ENEMY_BULLETS:
-                        enemy_bullets.append(make_aimed_enemy_bullet(shot[0] + 4, shot[1], player_x + 4, player_y + 4, 2 + level // 10))
-                if b[1] > -3 and bullet_hit == False:
-                    new_bullets.append(b)
-                elif bullet_hit == True:
-                    draw_color_sprite(oled, hit_spark, hit_x + 2, hit_y + 2, GAME_PALETTE)
-            bullets = new_bullets
-            for b in bullets:
-                draw_color_sprite(oled, bullet, b[0], b[1], PLAYER_BULLET_PALETTE)
-
-        # Enemy movement
-        turn_around = False
-        enemy_move_timer += 1
-        if enemy_move_timer >= enemy_move_delay:
-            enemy_move_timer = 0
-            for enemy in enemies:
-                if enemy[0] <= 0 or enemy[0] >= SCREEN_W - 8:
-                    turn_around = True
-            if turn_around:
-                enemy_direction *= -1
-            if freeze_timer <= 0:
-                enemy_speed_bonus = level // 6
-                for enemy in enemies:
-                    if enemy[3] == "fast":
-                        enemy[0] += enemy_direction * (2 + enemy_speed_bonus)
-                    elif enemy[3] == "dodger":
-                        enemy[0] += enemy_direction * (3 + enemy_speed_bonus)
-                        if random.randint(0, 8) == 0:
-                            enemy[0] += random.choice([-3, 3])
-                    elif enemy[3] == "charger":
-                        enemy[0] += enemy_direction * (1 + enemy_speed_bonus)
-                        enemy[1] += 1
-                    elif enemy[3] == "elite":
-                        enemy[0] += enemy_direction * (2 + enemy_speed_bonus)
-                    else:
-                        enemy[0] += enemy_direction * (1 + enemy_speed_bonus)
-
-                    if enemy[0] < 0:
-                        enemy[0] = 0
-                    elif enemy[0] > SCREEN_W - 8:
-                        enemy[0] = SCREEN_W - 8
-
-                # Slow downward pressure. As level rises, enemies drop more often.
-                enemy_drop_timer += 1
-                enemy_drop_delay = max(18, 55 - level * 2)
-                if enemy_drop_timer >= enemy_drop_delay:
-                    enemy_drop_timer = 0
+                current_shoot_delay = shoot_delay
+    
+            shoot_timer += 1
+            if shoot_timer >= current_shoot_delay:
+                shoot_timer = 0
+                center_x = player_x + 3
+                for i in range(shot_count):
+                    if len(bullets) >= max_player_bullets:
+                        break
+                    offset = int((i - (shot_count - 1) / 2) * 4)
+                    bullets.append([center_x + offset, player_y - 3])
+    
+            # Special ability with joystick press
+            if button_G.value() == 0 and special_ready == True and special_ability != None:
+                if special_ability == "Laser":
+                    laser_timer = 12 + laser_bonus
+                elif special_ability == "Shield":
+                    shield = 1
+                elif special_ability == "Bomb":
+                    enemies = []
+                    if boss_fight and boss != None:
+                        boss[4] -= 3 + bomb_bonus
+                    oled.fill(BOMB_COLOR)
+                    show_display(oled)
+                    time.sleep(0.25)
+                elif special_ability == "Freeze":
+                    freeze_timer = 50 + freeze_bonus
+                elif special_ability == "Heal":
+                    lives += 1
+                elif special_ability == "Pulse":
+                    enemy_bullets = []
                     for enemy in enemies:
-                        enemy[1] += 1
-
-        # Spawners occasionally create extra basic enemies.
-        spawned_enemies = []
-        if freeze_timer <= 0 and len(enemies) < 28:
-            spawn_chance = max(25, 120 - level)
-            for enemy in enemies:
-                if enemy[3] == "spawner" and random.randint(0, spawn_chance) == 0:
-                    spawn_y = enemy[1] + 10
-                    if spawn_y < SCREEN_H - 12:
-                        spawned_enemies.append([enemy[0], spawn_y, 1, "basic"])
-        for enemy in spawned_enemies:
-            enemies.append(enemy)
-
-        # Enemy contact damage. If enemies reach the player, they hurt you.
-        if invincible <= 0:
-            for enemy in enemies:
-                if rects_overlap(enemy[0], enemy[1], 8, 8, player_x, player_y, 8, 8):
-                    if shield > 0:
-                        shield -= 1
-                    else:
-                        lives -= 1
-                        sound(220, 9000, 0.02)
-                    invincible = 25
-                    break
-
-        # Draw enemies
-        for enemy in enemies:
-            if enemy[3] == "basic":
-                draw_color_sprite(oled, basic, enemy[0], enemy[1], GAME_PALETTE)
-            elif enemy[3] == "tank":
-                draw_color_sprite(oled, tank, enemy[0], enemy[1], GAME_PALETTE)
-            elif enemy[3] == "shooter":
-                draw_color_sprite(oled, shooter, enemy[0], enemy[1], GAME_PALETTE)
-            elif enemy[3] == "fast":
-                draw_color_sprite(oled, fast_enemy, enemy[0], enemy[1], GAME_PALETTE)
-            elif enemy[3] == "dodger":
-                draw_color_sprite(oled, dodger, enemy[0], enemy[1], GAME_PALETTE)
-            elif enemy[3] == "splitter":
-                draw_color_sprite(oled, splitter, enemy[0], enemy[1], GAME_PALETTE)
-            elif enemy[3] == "sniper":
-                draw_color_sprite(oled, sniper, enemy[0], enemy[1], GAME_PALETTE)
-            elif enemy[3] == "charger":
-                draw_color_sprite(oled, charger, enemy[0], enemy[1], GAME_PALETTE)
-            elif enemy[3] == "shielded":
-                draw_color_sprite(oled, shielded, enemy[0], enemy[1], GAME_PALETTE)
-            elif enemy[3] == "spawner":
-                draw_color_sprite(oled, spawner, enemy[0], enemy[1], GAME_PALETTE)
-            elif enemy[3] == "bomber":
-                draw_color_sprite(oled, bomber, enemy[0], enemy[1], GAME_PALETTE)
-            elif enemy[3] == "elite":
-                draw_color_sprite(oled, elite, enemy[0], enemy[1], GAME_PALETTE)
-
-        # Enemy shooting and bullets
-        if freeze_timer <= 0:
-            if enemies:
-                the_chosen_one = random.choice(enemies)
-                if the_chosen_one[3] == "basic":
-                    shoot_chance = 16
-                    enemy_bullet_speed = 2 + level // 10
-                elif the_chosen_one[3] == "tank":
-                    shoot_chance = 24
-                    enemy_bullet_speed = 2 + level // 12
-                elif the_chosen_one[3] == "shooter":
-                    shoot_chance = 6
-                    enemy_bullet_speed = 2 + level // 10
-                elif the_chosen_one[3] == "fast":
-                    shoot_chance = 12
-                    enemy_bullet_speed = 2 + level // 10
-                elif the_chosen_one[3] == "dodger":
-                    shoot_chance = 13
-                    enemy_bullet_speed = 2 + level // 10
-                elif the_chosen_one[3] == "splitter":
-                    shoot_chance = 14
-                    enemy_bullet_speed = 2 + level // 10
-                elif the_chosen_one[3] == "sniper":
-                    shoot_chance = 4
-                    enemy_bullet_speed = 3 + level // 10
-                elif the_chosen_one[3] == "charger":
-                    shoot_chance = 16
-                    enemy_bullet_speed = 2 + level // 12
-                elif the_chosen_one[3] == "shielded":
-                    shoot_chance = 18
-                    enemy_bullet_speed = 2 + level // 12
-                elif the_chosen_one[3] == "spawner":
-                    shoot_chance = 20
-                    enemy_bullet_speed = 2 + level // 12
-                elif the_chosen_one[3] == "bomber":
-                    shoot_chance = 10
-                    enemy_bullet_speed = 2 + level // 10
-                elif the_chosen_one[3] == "elite":
-                    shoot_chance = 5
-                    enemy_bullet_speed = 3 + level // 9
+                        enemy[2] -= 1 + bullet_damage // 2
+                    if boss_fight and boss != None:
+                        boss[4] -= 2 + bullet_damage
+                elif special_ability == "Missile":
+                    if boss_fight and boss != None:
+                        boss[4] -= 8 + bullet_damage * 2
+                    elif enemies:
+                        target_enemy = enemies[0]
+                        for enemy in enemies:
+                            if enemy[1] > target_enemy[1]:
+                                target_enemy = enemy
+                        target_enemy[2] = 0
+                elif special_ability == "Overdrive":
+                    overdrive_timer = 100
+                special_ready = False
+                special_cooldown = special_cooldown_max
+                special_last_second = time.ticks_ms()
+                wait_for_release(button_G)
+    
+            # Cooldown once per second
+            if special_ready == False:
+                now = time.ticks_ms()
+                if time.ticks_diff(now, special_last_second) >= 1000:
+                    special_last_second = now
+                    special_cooldown -= 1
+                    if special_cooldown <= 0:
+                        special_cooldown = 0
+                        special_ready = True
+    
+            oled.fill(SPACE_BLACK)
+    
+            # Boss
+            if boss_fight == True:
+                boss, bullets = update_boss(oled, boss, bullets, bullet_speed, freeze_timer, GAME_PALETTE, bullet_damage)
+                if boss != None:
+                    boss_lives = boss[4]
+                    boss_max_lives = boss[5]
+                    oled.rect(25, 0, 110, 6, WHITE)
+                    health_width = int((boss_lives / boss_max_lives) * 108)
+                    if health_width < 0:
+                        health_width = 0
+                    oled.fill_rect(26, 1, health_width, 4, HEALTH_GREEN)
+                    for b in bullets:
+                        draw_color_sprite(oled, bullet, b[0], b[1], PLAYER_BULLET_PALETTE)
+                    if freeze_timer <= 0:
+                        boss[9] += 1
+                        if boss[9] >= boss[7]:
+                            boss[9] = 0
+                            enemy_bullets = boss_attack(enemy_bullets, boss, player_x + 4, player_y + 4, 2 + level // 8)
+                if boss == None:
+                    boss_fight = False
+                    was_a_boss_fight = True
+                    bullets = []
+                    enemy_bullets = []
+                    score += 250
+                    oled.fill(BLACK)
+                    center_text_x(oled, "BOSS DEFEATED", 25, YELLOW, SCREEN_W)
+                    show_display(oled)
+                    time.sleep(1)
+                    boss_choice = upgrades(oled, boss_upgrades, button_B, button_G, button_R, button_Y)
+                    if boss_choice != None:
+                        special_ability = boss_choice[0]
+                        special_ready = True
+                        special_cooldown = 0
+    
+            # Shield and player
+            if shield > 0:
+                shield_x = player_x - 2
+                if shield_x < 0:
+                    shield_x = 0
+                elif shield_x > SCREEN_W - 12:
+                    shield_x = SCREEN_W - 12
+                draw_color_sprite(oled, shield_sprite, shield_x, player_y - 2, GAME_PALETTE)
+            draw_color_sprite(oled, player, player_x, player_y, GAME_PALETTE)
+    
+            # UI
+            for i in range(lives):
+                draw_color_sprite(oled, life_ship, i * 8, 0, GAME_PALETTE)
+            draw_tiny_text(oled, str(score), 40, 0, WHITE)
+            if special_ability != None:
+                draw_special_icon(oled, special_ability)
+                if special_ready:
+                    draw_tiny_text(oled, "R", 140, 10, GREEN)
                 else:
-                    shoot_chance = 16
-                    enemy_bullet_speed = 2 + level // 10
-
-                # Lower shoot_chance means enemies shoot more often.
-                shoot_chance = max(3, shoot_chance - level // 2)
-
-                if random.randint(0, shoot_chance) == 0 and len(enemy_bullets) < MAX_ENEMY_BULLETS:
-                    if the_chosen_one[3] == "bomber":
-                        for offset in [-4, 0, 4]:
-                            if len(enemy_bullets) < MAX_ENEMY_BULLETS:
-                                enemy_bullets.append(make_aimed_enemy_bullet(the_chosen_one[0] + 3 + offset, the_chosen_one[1] + 8, player_x + 4, player_y + 4, enemy_bullet_speed))
+                    draw_tiny_text(oled, str(special_cooldown), 136, 10, YELLOW)
+    
+            # Laser
+            if laser_timer > 0:
+                oled.fill_rect(player_x + 3, 0, 2, player_y, LASER_COLOR)
+                laser_timer -= 1
+                new_enemies = []
+                for enemy in enemies:
+                    if player_x + 3 < enemy[0] + 8 and player_x + 5 > enemy[0]:
+                        enemy[2] -= 1
+                    if enemy[2] > 0:
+                        new_enemies.append(enemy)
                     else:
-                        enemy_bullets.append(make_aimed_enemy_bullet(the_chosen_one[0] + 3, the_chosen_one[1] + 8, player_x + 4, player_y + 4, enemy_bullet_speed))
-            for eb in enemy_bullets:
-                eb[0] += eb[2]
-                eb[1] += eb[3]
-                eb_x = bullet_screen_x(eb)
-                eb_y = bullet_screen_y(eb)
-
-                if eb_x < player_x + 8 and eb_x + 2 > player_x and eb_y < player_y + 8 and eb_y + 3 > player_y and invincible <= 0:
-                    if shield > 0:
-                        shield -= 1
+                        score += 10
+                enemies = new_enemies
+                if boss_fight and boss != None:
+                    if player_x + 3 < boss[2] + 16 and player_x + 5 > boss[2]:
+                        boss[4] -= 1
+    
+            # Player bullets against normal enemies
+            new_bullets = []
+            if boss_fight == False:
+                for b in bullets:
+                    b[1] -= bullet_speed
+                    enemies, bullet_hit, hit_x, hit_y, points_gained, death_shots = update_enimies(enemies, b[0], b[1], bullet_damage)
+                    score += points_gained
+                    for shot in death_shots:
+                        if len(enemy_bullets) < MAX_ENEMY_BULLETS:
+                            enemy_bullets.append(make_aimed_enemy_bullet(shot[0], shot[1], player_x + 4, player_y + 4, 2 + level // 10))
+                        if len(enemy_bullets) < MAX_ENEMY_BULLETS:
+                            enemy_bullets.append(make_aimed_enemy_bullet(shot[0] + 4, shot[1], player_x + 4, player_y + 4, 2 + level // 10))
+                    if b[1] > -3 and bullet_hit == False:
+                        new_bullets.append(b)
+                    elif bullet_hit == True:
+                        draw_color_sprite(oled, hit_spark, hit_x + 2, hit_y + 2, GAME_PALETTE)
+                bullets = new_bullets
+                for b in bullets:
+                    draw_color_sprite(oled, bullet, b[0], b[1], PLAYER_BULLET_PALETTE)
+    
+            # Enemy movement
+            turn_around = False
+            enemy_move_timer += 1
+            if enemy_move_timer >= enemy_move_delay:
+                enemy_move_timer = 0
+                for enemy in enemies:
+                    if enemy[0] <= 0 or enemy[0] >= SCREEN_W - 8:
+                        turn_around = True
+                if turn_around:
+                    enemy_direction *= -1
+                if freeze_timer <= 0:
+                    enemy_speed_bonus = level // 6
+                    for enemy in enemies:
+                        if enemy[3] == "fast":
+                            enemy[0] += enemy_direction * (2 + enemy_speed_bonus)
+                        elif enemy[3] == "dodger":
+                            enemy[0] += enemy_direction * (3 + enemy_speed_bonus)
+                            if random.randint(0, 8) == 0:
+                                enemy[0] += random.choice([-3, 3])
+                        elif enemy[3] == "charger":
+                            enemy[0] += enemy_direction * (1 + enemy_speed_bonus)
+                            enemy[1] += 1
+                        elif enemy[3] == "elite":
+                            enemy[0] += enemy_direction * (2 + enemy_speed_bonus)
+                        else:
+                            enemy[0] += enemy_direction * (1 + enemy_speed_bonus)
+    
+                        if enemy[0] < 0:
+                            enemy[0] = 0
+                        elif enemy[0] > SCREEN_W - 8:
+                            enemy[0] = SCREEN_W - 8
+    
+                    # Slow downward pressure. As level rises, enemies drop more often.
+                    enemy_drop_timer += 1
+                    enemy_drop_delay = max(18, 55 - level * 2)
+                    if enemy_drop_timer >= enemy_drop_delay:
+                        enemy_drop_timer = 0
+                        for enemy in enemies:
+                            enemy[1] += 1
+    
+            # Spawners occasionally create extra basic enemies.
+            spawned_enemies = []
+            if freeze_timer <= 0 and len(enemies) < 28:
+                spawn_chance = max(25, 120 - level)
+                for enemy in enemies:
+                    if enemy[3] == "spawner" and random.randint(0, spawn_chance) == 0:
+                        spawn_y = enemy[1] + 10
+                        if spawn_y < SCREEN_H - 12:
+                            spawned_enemies.append([enemy[0], spawn_y, 1, "basic"])
+            for enemy in spawned_enemies:
+                enemies.append(enemy)
+    
+            # Enemy contact damage. If enemies reach the player, they hurt you.
+            if invincible <= 0:
+                for enemy in enemies:
+                    if rects_overlap(enemy[0], enemy[1], 8, 8, player_x, player_y, 8, 8):
+                        if shield > 0:
+                            shield -= 1
+                        else:
+                            lives -= 1
+                            sound(220, 9000, 0.02)
+                        invincible = 25
+                        break
+    
+            # Draw enemies
+            for enemy in enemies:
+                if enemy[3] == "basic":
+                    draw_color_sprite(oled, basic, enemy[0], enemy[1], GAME_PALETTE)
+                elif enemy[3] == "tank":
+                    draw_color_sprite(oled, tank, enemy[0], enemy[1], GAME_PALETTE)
+                elif enemy[3] == "shooter":
+                    draw_color_sprite(oled, shooter, enemy[0], enemy[1], GAME_PALETTE)
+                elif enemy[3] == "fast":
+                    draw_color_sprite(oled, fast_enemy, enemy[0], enemy[1], GAME_PALETTE)
+                elif enemy[3] == "dodger":
+                    draw_color_sprite(oled, dodger, enemy[0], enemy[1], GAME_PALETTE)
+                elif enemy[3] == "splitter":
+                    draw_color_sprite(oled, splitter, enemy[0], enemy[1], GAME_PALETTE)
+                elif enemy[3] == "sniper":
+                    draw_color_sprite(oled, sniper, enemy[0], enemy[1], GAME_PALETTE)
+                elif enemy[3] == "charger":
+                    draw_color_sprite(oled, charger, enemy[0], enemy[1], GAME_PALETTE)
+                elif enemy[3] == "shielded":
+                    draw_color_sprite(oled, shielded, enemy[0], enemy[1], GAME_PALETTE)
+                elif enemy[3] == "spawner":
+                    draw_color_sprite(oled, spawner, enemy[0], enemy[1], GAME_PALETTE)
+                elif enemy[3] == "bomber":
+                    draw_color_sprite(oled, bomber, enemy[0], enemy[1], GAME_PALETTE)
+                elif enemy[3] == "elite":
+                    draw_color_sprite(oled, elite, enemy[0], enemy[1], GAME_PALETTE)
+    
+            # Enemy shooting and bullets
+            if freeze_timer <= 0:
+                if enemies:
+                    the_chosen_one = random.choice(enemies)
+                    if the_chosen_one[3] == "basic":
+                        shoot_chance = 16
+                        enemy_bullet_speed = 2 + level // 10
+                    elif the_chosen_one[3] == "tank":
+                        shoot_chance = 24
+                        enemy_bullet_speed = 2 + level // 12
+                    elif the_chosen_one[3] == "shooter":
+                        shoot_chance = 6
+                        enemy_bullet_speed = 2 + level // 10
+                    elif the_chosen_one[3] == "fast":
+                        shoot_chance = 12
+                        enemy_bullet_speed = 2 + level // 10
+                    elif the_chosen_one[3] == "dodger":
+                        shoot_chance = 13
+                        enemy_bullet_speed = 2 + level // 10
+                    elif the_chosen_one[3] == "splitter":
+                        shoot_chance = 14
+                        enemy_bullet_speed = 2 + level // 10
+                    elif the_chosen_one[3] == "sniper":
+                        shoot_chance = 4
+                        enemy_bullet_speed = 3 + level // 10
+                    elif the_chosen_one[3] == "charger":
+                        shoot_chance = 16
+                        enemy_bullet_speed = 2 + level // 12
+                    elif the_chosen_one[3] == "shielded":
+                        shoot_chance = 18
+                        enemy_bullet_speed = 2 + level // 12
+                    elif the_chosen_one[3] == "spawner":
+                        shoot_chance = 20
+                        enemy_bullet_speed = 2 + level // 12
+                    elif the_chosen_one[3] == "bomber":
+                        shoot_chance = 10
+                        enemy_bullet_speed = 2 + level // 10
+                    elif the_chosen_one[3] == "elite":
+                        shoot_chance = 5
+                        enemy_bullet_speed = 3 + level // 9
                     else:
-                        lives -= 1
-                        sound(220, 9000, 0.02)
-                    invincible = 20
-                else:
-                    if eb_x > -4 and eb_x < SCREEN_W and eb_y > -4 and eb_y < SCREEN_H:
-                        draw_color_sprite(oled, enemy_bullet_sprite, eb_x, eb_y, ENEMY_BULLET_PALETTE)
-                        new_enemy_bullets.append(eb)
-            enemy_bullets = new_enemy_bullets
-
-        if invincible > 0:
-            invincible -= 1
-        show_display(oled)
+                        shoot_chance = 16
+                        enemy_bullet_speed = 2 + level // 10
+    
+                    # Lower shoot_chance means enemies shoot more often.
+                    shoot_chance = max(3, shoot_chance - level // 2)
+    
+                    if random.randint(0, shoot_chance) == 0 and len(enemy_bullets) < MAX_ENEMY_BULLETS:
+                        if the_chosen_one[3] == "bomber":
+                            for offset in [-4, 0, 4]:
+                                if len(enemy_bullets) < MAX_ENEMY_BULLETS:
+                                    enemy_bullets.append(make_aimed_enemy_bullet(the_chosen_one[0] + 3 + offset, the_chosen_one[1] + 8, player_x + 4, player_y + 4, enemy_bullet_speed))
+                        else:
+                            enemy_bullets.append(make_aimed_enemy_bullet(the_chosen_one[0] + 3, the_chosen_one[1] + 8, player_x + 4, player_y + 4, enemy_bullet_speed))
+                for eb in enemy_bullets:
+                    eb[0] += eb[2]
+                    eb[1] += eb[3]
+                    eb_x = bullet_screen_x(eb)
+                    eb_y = bullet_screen_y(eb)
+    
+                    if eb_x < player_x + 8 and eb_x + 2 > player_x and eb_y < player_y + 8 and eb_y + 3 > player_y and invincible <= 0:
+                        if shield > 0:
+                            shield -= 1
+                        else:
+                            lives -= 1
+                            sound(220, 9000, 0.02)
+                        invincible = 20
+                    else:
+                        if eb_x > -4 and eb_x < SCREEN_W and eb_y > -4 and eb_y < SCREEN_H:
+                            draw_color_sprite(oled, enemy_bullet_sprite, eb_x, eb_y, ENEMY_BULLET_PALETTE)
+                            new_enemy_bullets.append(eb)
+                enemy_bullets = new_enemy_bullets
+    
+            if invincible > 0:
+                invincible -= 1
+            show_display(oled)
 
 
