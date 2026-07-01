@@ -5,6 +5,7 @@ CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789 _-.!?"
 def type_text(oled, controls, title, start_text=""):
     text = start_text
     char_index = 0
+    last_move = time.ticks_ms()
 
     while True:
         oled.fill(0)
@@ -16,7 +17,6 @@ def type_text(oled, controls, title, start_text=""):
 
         oled.text("< " + CHARS[char_index] + " >", 50, 39, 65535)
 
-        # Controls help
         oled.text("Joy L/R: Letter", 4, 54, 65535)
         oled.text("Green:Add Yellow:Del", 4, 63, 65535)
         oled.text("Red:Done", 4, 72, 65535)
@@ -24,18 +24,20 @@ def type_text(oled, controls, title, start_text=""):
         oled.show()
 
         left, right, up, down = controls["joystick"]()
+        now = time.ticks_ms()
 
-        if left:
-            char_index -= 1
-            if char_index < 0:
-                char_index = len(CHARS) - 1
-            time.sleep(0.08)
+        if time.ticks_diff(now, last_move) > 120:
+            if left:
+                char_index -= 1
+                if char_index < 0:
+                    char_index = len(CHARS) - 1
+                last_move = now
 
-        if right:
-            char_index += 1
-            if char_index >= len(CHARS):
-                char_index = 0
-            time.sleep(0.08)
+            elif right:
+                char_index += 1
+                if char_index >= len(CHARS):
+                    char_index = 0
+                last_move = now
 
         if controls["green"]():
             text += CHARS[char_index]
@@ -53,14 +55,8 @@ def type_text(oled, controls, title, start_text=""):
             time.sleep(0.2)
             return text
 
-def wait_joystick_center(controls):
-    while True:
-        left, right, up, down = controls["joystick"]()
-        if not left and not right and not up and not down:
-            return
-        time.sleep(0.03)
+        time.sleep(0.02)
 
 def wait_buttons_release(controls):
     while controls["green"]() or controls["yellow"]() or controls["red"]() or controls["blue"]():
         time.sleep(0.03)
-
