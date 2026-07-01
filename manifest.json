@@ -32,7 +32,7 @@
       "module": "systems.keyboard",
       "version": 1,
       "display_version": "1",
-      "channel": "dev",
+      "channel": "release",
       "url": "https://raw.githubusercontent.com/pixelForge-png/pixelforge-updates/main/systems/keyboard.py"
     },
     {
@@ -42,7 +42,7 @@
       "module": "systems.settings_manager",
       "version": 1,
       "display_version": "1",
-      "channel": "dev",
+      "channel": "release",
       "url": "https://raw.githubusercontent.com/pixelForge-png/pixelforge-updates/main/systems/settings_manager.py"
     },
     {
@@ -52,7 +52,7 @@
       "module": "systems.update_manager",
       "version": 1,
       "display_version": "1",
-      "channel": "dev",
+      "channel": "release",
       "url": "https://raw.githubusercontent.com/pixelForge-png/pixelforge-updates/main/systems/update_manager.py"
     }
   ]
