@@ -13,13 +13,42 @@
   ],
   "helpers": [
     {
-      "id": "oled_functions_test",
+      "id": "oled_functions",
       "title": "None",
-      "file": "helpers/oled_functions_test.py",
-      "module": "helpers.oled_functions_test",
-      "version": 2,
+      "file": "helpers/oled_functions.py",
+      "module": "helpers.oled_functions",
+      "version": 1,
       "channel": "release",
-      "url": "https://raw.githubusercontent.com/pixelForge-png/pixelforge-updates/main/helpers/oled_functions_test.py"
+      "url": "https://raw.githubusercontent.com/pixelForge-png/pixelforge-updates/main/helpers/oled_functions.py"
+    }
+  ]
+  "systems": [
+    {
+      "id": "keyboard",
+      "title": "None",
+      "file": "keyboard.py",
+      "module": "systems.keyboard",
+      "version": 1,
+      "channel": "dev",
+      "url": "https://raw.githubusercontent.com/pixelForge-png/pixelforge-updates/main/systems/keyboard.py"
+    }
+    {
+      "id": "settings_manager",
+      "title": "None",
+      "file": "settings_manager.py",
+      "module": "systems.settings_manager",
+      "version": 1,
+      "channel": "dev",
+      "url": "https://raw.githubusercontent.com/pixelForge-png/pixelforge-updates/main/systems/settings_manager.py"
+    }
+    {
+      "id": "update_manager",
+      "title": "None",
+      "file": "update_manager.py",
+      "module": "systems.update_manager",
+      "version": 1,
+      "channel": "dev",
+      "url": "https://raw.githubusercontent.com/pixelForge-png/pixelforge-updates/main/systems/update_manager.py"
     }
   ]
 }
