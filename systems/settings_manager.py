@@ -3,13 +3,14 @@ import os
 
 SETTINGS_FILE = "/data/settings.json"
 VERSIONS_FILE = "/data/versions.json"
+GAME_INFO_FILE = "/data/game_info.json"
 
 DEFAULT_SETTINGS = {
     "username": "PLAYER",
     "wifi_ssid": "",
     "wifi_password": "",
     "auto_update": True,
-    "dev_mode" : False
+    "dev_mode": False
 }
 
 def ensure_data_folder():
@@ -23,10 +24,23 @@ def load_settings():
 
     try:
         with open(SETTINGS_FILE, "r") as f:
-            return ujson.loads(f.read())
+            settings = ujson.loads(f.read())
     except:
         save_settings(DEFAULT_SETTINGS)
         return DEFAULT_SETTINGS.copy()
+
+    # Add missing new settings if the file was made by an older version.
+    changed = False
+
+    for key in DEFAULT_SETTINGS:
+        if key not in settings:
+            settings[key] = DEFAULT_SETTINGS[key]
+            changed = True
+
+    if changed:
+        save_settings(settings)
+
+    return settings
 
 def save_settings(settings):
     ensure_data_folder()
@@ -49,7 +63,6 @@ def save_versions(versions):
 
     with open(VERSIONS_FILE, "w") as f:
         f.write(ujson.dumps(versions))
-GAME_INFO_FILE = "/data/game_info.json"
 
 def load_game_info():
     ensure_data_folder()
@@ -66,4 +79,3 @@ def save_game_info(game_info):
 
     with open(GAME_INFO_FILE, "w") as f:
         f.write(ujson.dumps(game_info))
-
