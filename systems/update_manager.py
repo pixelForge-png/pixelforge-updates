@@ -144,6 +144,7 @@ def check_for_updates(screen_status=None):
 
     versions = settings_manager.load_versions()
     settings = settings_manager.load_settings()
+    game_info = settings_manager.load_game_info()
 
     dev_mode = settings.get("dev_mode", False)
 
@@ -184,6 +185,11 @@ def check_for_updates(screen_status=None):
             continue
 
         visible_games.append(game)
+        game_info[game["id"]] = {
+            "title": game.get("title", game["id"]),
+            "display_version": game.get("display_version", str(game["version"])),
+            "channel": game.get("channel", "release")
+        }
 
         game_id = game["id"]
         title = game["title"]
@@ -217,6 +223,7 @@ def check_for_updates(screen_status=None):
                     time.sleep(2)
 
     settings_manager.save_versions(versions)
+    settings_manager.save_game_info(game_info)
 
     if screen_status:
         if updated_count == 0:
