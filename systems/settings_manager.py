@@ -49,4 +49,21 @@ def save_versions(versions):
 
     with open(VERSIONS_FILE, "w") as f:
         f.write(ujson.dumps(versions))
+GAME_INFO_FILE = "/data/game_info.json"
+
+def load_game_info():
+    ensure_data_folder()
+
+    try:
+        with open(GAME_INFO_FILE, "r") as f:
+            return ujson.loads(f.read())
+    except:
+        save_game_info({})
+        return {}
+
+def save_game_info(game_info):
+    ensure_data_folder()
+
+    with open(GAME_INFO_FILE, "w") as f:
+        f.write(ujson.dumps(game_info))
 
