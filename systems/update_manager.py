@@ -13,6 +13,19 @@ def ensure_folder(path):
     except OSError:
         pass
 
+def ensure_parent_folder(filepath):
+    parts = filepath.split("/")
+
+    if len(parts) <= 2:
+        return
+
+    folder = "/" + parts[1]
+
+    try:
+        os.mkdir(folder)
+    except OSError:
+        pass
+
 def connect_wifi(ssid, password, oled=None, screen_status=None):
     if ssid == "":
         return False
@@ -41,8 +54,8 @@ def connect_wifi(ssid, password, oled=None, screen_status=None):
 
         if elapsed > 10:
             if screen_status:
-                screen_status("WIFI", "FAILED", "")
-                time.sleep(1)
+                screen_status("NO WIFI", "COULDNT", "CONNECT")
+                time.sleep(2)
             return False
 
         time.sleep(1)
@@ -82,11 +95,16 @@ def download_manifest(screen_status=None):
             screen_status("UPDATE FAIL", "MANIFEST", str(e)[:16])
             time.sleep(2)
         return None
-    
-def update_file_list(file_list, versions, version_prefix, screen_status=None):
+
+def update_file_list(file_list, versions, version_prefix, dev_mode, screen_status=None):
     updated_count = 0
 
     for item in file_list:
+        channel = item.get("channel", "release")
+
+        if channel == "dev" and not dev_mode:
+            continue
+
         file_id = version_prefix + item["id"]
         filepath = "/" + item["file"]
         version = item["version"]
@@ -119,62 +137,42 @@ def update_file_list(file_list, versions, version_prefix, screen_status=None):
 
     return updated_count
 
-def ensure_parent_folder(filepath):
-    parts = filepath.split("/")
-
-    if len(parts) <= 2:
-        return
-
-    folder = "/" + parts[1]
-
-    try:
-        os.mkdir(folder)
-    except OSError:
-        pass
-
 def check_for_updates(screen_status=None):
     ensure_folder("/games")
     ensure_folder("/data")
     ensure_folder("/helpers")
 
     manifest = download_manifest(screen_status)
-    game_info = settings_manager.load_game_info()
 
     if manifest == None:
         return []
 
     versions = settings_manager.load_versions()
     settings = settings_manager.load_settings()
+    game_info = settings_manager.load_game_info()
 
     dev_mode = settings.get("dev_mode", False)
 
     updated_count = 0
 
-    # -----------------------------
-    # Update system files
-    # -----------------------------
     system_files = manifest.get("system_files", [])
     updated_count += update_file_list(
         system_files,
         versions,
         "system_",
+        dev_mode,
         screen_status
     )
 
-    # -----------------------------
-    # Update helper files
-    # -----------------------------
     helper_files = manifest.get("helpers", [])
     updated_count += update_file_list(
         helper_files,
         versions,
         "helper_",
+        dev_mode,
         screen_status
     )
 
-    # -----------------------------
-    # Update games
-    # -----------------------------
     games = manifest.get("games", [])
     visible_games = []
 
@@ -185,7 +183,7 @@ def check_for_updates(screen_status=None):
             continue
 
         visible_games.append(game)
-        
+
         game_info[game["id"]] = {
             "title": game.get("title", game["id"]),
             "display_version": game.get("display_version", str(game["version"])),
@@ -196,7 +194,6 @@ def check_for_updates(screen_status=None):
         title = game["title"]
         filepath = "/" + game["file"]
         version = game["version"]
-        display_version = game["display_version"]
         url = game["url"]
 
         current_version = versions.get(game_id, 0)
@@ -213,7 +210,8 @@ def check_for_updates(screen_status=None):
 
         if needs_update:
             if screen_status:
-                screen_status("DOWNLOADING", title[:16], "v" + str(version))
+                display_version = game.get("display_version", str(version))
+                screen_status("DOWNLOADING", title[:16], "v" + display_version)
 
             try:
                 download_file(url, filepath)
@@ -223,7 +221,7 @@ def check_for_updates(screen_status=None):
                 if screen_status:
                     screen_status("DL FAILED", title[:16], str(e)[:16])
                     time.sleep(2)
-    
+
     settings_manager.save_game_info(game_info)
     settings_manager.save_versions(versions)
 
@@ -243,4 +241,3 @@ def load_manifest_only(screen_status=None):
         return manifest.get("games", [])
     except:
         return []
-
