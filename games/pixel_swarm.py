@@ -479,6 +479,8 @@ def swarm_info():
 
 highscore = load_highscore()
 def main(oled, controls, settings):
+    global highscore
+    
     while True:
         while True:
             oled.fill(SPACE_BLACK)
