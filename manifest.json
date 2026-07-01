@@ -6,7 +6,8 @@
       "title": "Pixel Swarm",
       "file": "games/pixel_swarm.py",
       "module": "games.pixel_swarm",
-      "version": 2,
+      "version": 3,
+      "display_version":1,
       "channel": "release",
       "url": "https://raw.githubusercontent.com/pixelForge-png/pixelforge-updates/main/games/pixel_swarm.py"
     },
