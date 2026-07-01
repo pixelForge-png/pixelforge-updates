@@ -2,7 +2,7 @@ from machine import Pin, SPI, ADC
 from st7735_fb import ST7735FB
 import time
 import random
-from buzzer_sounds import sound
+from helpers.buzzer_sounds import sound
 from helpers.oled_functions_test import (
     BLACK, WHITE, GRAY, DARK_GRAY, RED, GREEN, BLUE, YELLOW, CYAN, MAGENTA,
     ORANGE, PURPLE, HEALTH_GREEN, DANGER_RED, SHIELD_BLUE, SPACE_BLACK,
