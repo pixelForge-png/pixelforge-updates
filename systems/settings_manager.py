@@ -29,7 +29,6 @@ def load_settings():
         save_settings(DEFAULT_SETTINGS)
         return DEFAULT_SETTINGS.copy()
 
-    # Add missing new settings if the file was made by an older version.
     changed = False
 
     for key in DEFAULT_SETTINGS:
