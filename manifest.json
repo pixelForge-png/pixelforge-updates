@@ -31,4 +31,15 @@
       "url": "https://raw.githubusercontent.com/pixelForge-png/pixelforge-updates/main/tests/pixel_swarm_test.py"
     }
   ]
+  "helpers": [
+    {
+      "id": "oled_functions_test",
+      "title": "None",
+      "file": "helpers/oled_functions_test.py",
+      "module": "helpers.oled_functions_test",
+      "version": 1,
+      "channel": "dev",
+      "url": "https://raw.githubusercontent.com/pixelForge-png/pixelforge-updates/main/helpers/oled_functions_test.py"
+    }
+  ]
 }
