@@ -28,7 +28,7 @@
       "title": "None",
       "file": "helpers/oled_functions.py",
       "module": "helpers.oled_functions",
-      "version": 1,
+      "version": 2,
       "display_version": "1.0",
       "channel": "release",
       "url": "https://raw.githubusercontent.com/pixelForge-png/pixelforge-updates/main/helpers/oled_functions.py"
