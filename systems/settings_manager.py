@@ -10,7 +10,8 @@ DEFAULT_SETTINGS = {
     "wifi_ssid": "",
     "wifi_password": "",
     "auto_update": True,
-    "dev_mode": False
+    "dev_mode": False,
+    "joystick_mode": "normal"
 }
 
 def ensure_data_folder():
