@@ -75,13 +75,51 @@ def red_pressed():
     return pressed(button_R)
 
 def joystick_direction():
+    settings = settings_manager.load_settings()
+    joystick_mode = settings.get("joystick_mode", "normal")
+
     x = JOY_X.read_u16()
     y = JOY_Y.read_u16()
 
-    left = x > 52000
-    right = x < 12000
-    up = y < 12000
-    down = y > 52000
+    raw_left = x > 52000
+    raw_right = x < 12000
+    raw_up = y < 12000
+    raw_down = y > 52000
+
+    if joystick_mode == "normal":
+        left = raw_left
+        right = raw_right
+        up = raw_up
+        down = raw_down
+
+    elif joystick_mode == "rotated_left":
+        # Fixes:
+        # physical right reading as up
+        # physical up reading as right
+        # physical down reading as left
+        # physical left reading as down
+        left = raw_down
+        right = raw_up
+        up = raw_right
+        down = raw_left
+
+    elif joystick_mode == "rotated_right":
+        left = raw_up
+        right = raw_down
+        up = raw_left
+        down = raw_right
+
+    elif joystick_mode == "upside_down":
+        left = raw_right
+        right = raw_left
+        up = raw_down
+        down = raw_up
+
+    else:
+        left = raw_left
+        right = raw_right
+        up = raw_up
+        down = raw_down
 
     return left, right, up, down
 
