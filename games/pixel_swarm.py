@@ -480,7 +480,7 @@ def main(oled_from_launcher, controls, settings):
             if button_Y.value() == 0:
                 wait_for_release(button_Y)
                 swarm_info()
-            if button_R.vaule() == 0:
+            if button_R.value() == 0:
                 return
             if button_G.value() == 0:
                 wait_for_release(button_G)
