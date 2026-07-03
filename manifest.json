@@ -6,7 +6,7 @@
       "title": "Pixel Swarm",
       "file": "games/pixel_swarm.py",
       "module": "games.pixel_swarm",
-      "version": 6,
+      "version": 7,
       "display_version": "1.0",
       "channel": "release",
       "url": "https://raw.githubusercontent.com/pixelForge-png/pixelforge-updates/main/games/pixel_swarm.py"
@@ -38,7 +38,7 @@
       "title": "None",
       "file": "helpers/buzzer_sounds.py",
       "module": "helpers.buzzer_sounds",
-      "version": 2,
+      "version": 3,
       "display_version": "1.0",
       "channel": "release",
       "url": "https://raw.githubusercontent.com/pixelForge-png/pixelforge-updates/main/helpers/buzzer_sounds.py"
