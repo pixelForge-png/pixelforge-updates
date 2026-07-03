@@ -157,7 +157,7 @@ def check_for_updates(screen_status=None):
 
     updated_count = 0
 
-   system_files = manifest.get("system_files", [])
+    system_files = manifest.get("system_files", [])
 
     system_update_count = update_file_list(
         system_files,
@@ -252,3 +252,4 @@ def load_manifest_only(screen_status=None):
         return manifest.get("games", [])
     except:
         return []
+
