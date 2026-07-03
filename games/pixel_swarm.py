@@ -473,12 +473,15 @@ def main(oled_from_launcher, controls, settings):
         while True:
             oled.fill(SPACE_BLACK)
             center_text_x(oled, "PIXEL SWARM", 8, CYAN, SCREEN_W)
-            center_text_x(oled, "GREEN START", 36, GREEN, SCREEN_W)
-            center_text_x(oled, "YELLOW INFO", 54, YELLOW, SCREEN_W)
+            center_text_x(oled, "GREEN START", 28, GREEN, SCREEN_W)
+            center_text_x(oled, "YELLOW INFO", 46, YELLOW, SCREEN_W)
+            center_text_x(oled, "RED EXIT", 60, RED, SCREEN_W)
             show_display(oled)
             if button_Y.value() == 0:
                 wait_for_release(button_Y)
                 swarm_info()
+            if button_R.vaule() == 0:
+                return
             if button_G.value() == 0:
                 wait_for_release(button_G)
                 break
