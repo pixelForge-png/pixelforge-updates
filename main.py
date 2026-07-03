@@ -302,24 +302,13 @@ def test_games_menu():
 
         time.sleep(0.03)
 
-def settings_menu():
-    settings = settings_manager.load_settings()
-
-    items = [
-        "Username",
-        "WiFi Name",
-        "WiFi Pass",
-        "Update Now",
-        "Test Games",
-        "Back"
-    ]
-
+def simple_menu(title, items):
     index = 0
     last_move = time.ticks_ms()
 
     while True:
         oled.fill(BLACK)
-        center_text("SETTINGS", 2, CYAN)
+        center_text(title, 2, CYAN)
 
         for i in range(len(items)):
             y = 15 + i * 11
@@ -352,63 +341,238 @@ def settings_menu():
 
         if green_pressed():
             wait_release()
+            return items[index]
 
-            if items[index] == "Username":
-                settings["username"] = keyboard.type_text(
-                    oled,
-                    controls,
-                    "USERNAME",
-                    settings.get("username", "")
-                )
-                settings_manager.save_settings(settings)
+        if yellow_pressed():
+            wait_release()
+            return "Back"
 
-            elif items[index] == "WiFi Name":
-                settings["wifi_ssid"] = keyboard.type_text(
-                    oled,
-                    controls,
-                    "WIFI NAME",
-                    settings.get("wifi_ssid", "")
-                )
-                settings_manager.save_settings(settings)
+        time.sleep(0.03)
 
-            elif items[index] == "WiFi Pass":
-                settings["wifi_password"] = keyboard.type_text(
-                    oled,
-                    controls,
-                    "WIFI PASS",
-                    settings.get("wifi_password", "")
-                )
-                settings_manager.save_settings(settings)
+def wifi_settings_menu():
+    while True:
+        settings = settings_manager.load_settings()
 
-            elif items[index] == "Update Now":
-                connected = update_manager.connect_wifi(
-                    settings.get("wifi_ssid", ""),
-                    settings.get("wifi_password", ""),
-                    oled,
-                    screen_status
-                )
+        choice = simple_menu("WIFI", [
+            "WiFi Name",
+            "WiFi Pass",
+            "Connect",
+            "Back"
+        ])
 
-                if connected:
-                    update_manager.check_for_updates(screen_status)
-                else:
-                    screen_status("NO WIFI", "CHECK", "SETTINGS", RED)
-                    time.sleep(2)
+        if choice == "WiFi Name":
+            settings["wifi_ssid"] = keyboard.type_text(
+                oled,
+                controls,
+                "WIFI NAME",
+                settings.get("wifi_ssid", "")
+            )
+            settings_manager.save_settings(settings)
 
-            elif items[index] == "Test Games":
-                if settings.get("dev_mode", False):
-                    test_games_menu()
-                else:
-                    screen_status("LOCKED", "DEV ONLY", "", RED)
-                    time.sleep(2)
+        elif choice == "WiFi Pass":
+            settings["wifi_password"] = keyboard.type_text(
+                oled,
+                controls,
+                "WIFI PASS",
+                settings.get("wifi_password", "")
+            )
+            settings_manager.save_settings(settings)
 
-            elif items[index] == "Back":
-                return
+        elif choice == "Connect":
+            connected = update_manager.connect_wifi(
+                settings.get("wifi_ssid", ""),
+                settings.get("wifi_password", ""),
+                oled,
+                screen_status
+            )
+
+            if connected:
+                screen_status("WIFI", "CONNECTED", "OK", GREEN)
+                time.sleep(1)
+            else:
+                screen_status("WIFI", "FAILED", "CHECK INFO", RED)
+                time.sleep(2)
+
+        elif choice == "Back":
+            return
+
+def updates_settings_menu():
+    while True:
+        choice = simple_menu("UPDATES", [
+            "Update Now",
+            "Back"
+        ])
+
+        if choice == "Update Now":
+            settings = settings_manager.load_settings()
+
+            connected = update_manager.connect_wifi(
+                settings.get("wifi_ssid", ""),
+                settings.get("wifi_password", ""),
+                oled,
+                screen_status
+            )
+
+            if connected:
+                update_manager.check_for_updates(screen_status)
+            else:
+                screen_status("NO WIFI", "CONNECT", "FIRST", RED)
+                time.sleep(2)
+
+        elif choice == "Back":
+            return
+
+def console_settings_menu():
+    while True:
+        settings = settings_manager.load_settings()
+
+        auto_text = "Auto Update: "
+        if settings.get("auto_update", True):
+            auto_text += "On"
+        else:
+            auto_text += "Off"
+
+        joystick_mode = settings.get("joystick_mode", "normal")
+
+        choice = simple_menu("CONSOLE", [
+            "Username",
+            "Joystick",
+            auto_text,
+            "Back"
+        ])
+
+        if choice == "Username":
+            settings["username"] = keyboard.type_text(
+                oled,
+                controls,
+                "USERNAME",
+                settings.get("username", "")
+            )
+            settings_manager.save_settings(settings)
+
+        elif choice == "Joystick":
+            joystick_settings_menu(settings)
+
+        elif choice.startswith("Auto Update"):
+            settings["auto_update"] = not settings.get("auto_update", True)
+            settings_manager.save_settings(settings)
+
+            if settings["auto_update"]:
+                screen_status("AUTO UPDATE", "ON", "", GREEN)
+            else:
+                screen_status("AUTO UPDATE", "OFF", "", YELLOW)
+
+            time.sleep(1)
+
+        elif choice == "Back":
+            return
+
+def joystick_settings_menu(settings):
+    modes = [
+        ["normal", "Normal"],
+        ["rotated_left", "Rotated Left"],
+        ["rotated_right", "Rotated Right"],
+        ["upside_down", "Upside Down"]
+    ]
+
+    current_mode = settings.get("joystick_mode", "normal")
+    index = 0
+
+    for i in range(len(modes)):
+        if modes[i][0] == current_mode:
+            index = i
+
+    last_move = time.ticks_ms()
+
+    while True:
+        oled.fill(BLACK)
+
+        center_text("JOYSTICK", 3, CYAN)
+        center_text(modes[index][1], 24, WHITE)
+        center_text("<       >", 40, YELLOW)
+        center_text("GREEN SAVE", 56, GREEN)
+        oled.text("Y=Back", 2, 70, GRAY)
+
+        oled.show()
+
+        left, right, up, down = joystick_direction()
+        now = time.ticks_ms()
+
+        if time.ticks_diff(now, last_move) > 220:
+            if left:
+                index -= 1
+                if index < 0:
+                    index = len(modes) - 1
+                last_move = now
+
+            elif right:
+                index += 1
+                if index >= len(modes):
+                    index = 0
+                last_move = now
+
+        if green_pressed():
+            wait_release()
+
+            settings["joystick_mode"] = modes[index][0]
+            settings_manager.save_settings(settings)
+
+            screen_status("JOYSTICK", "SAVED", modes[index][1], GREEN)
+            time.sleep(1)
+            return
 
         if yellow_pressed():
             wait_release()
             return
 
         time.sleep(0.03)
+
+def dev_settings_menu():
+    while True:
+        choice = simple_menu("DEV", [
+            "Test Games",
+            "Back"
+        ])
+
+        if choice == "Test Games":
+            test_games_menu()
+
+        elif choice == "Back":
+            return
+
+def settings_menu():
+    while True:
+        settings = settings_manager.load_settings()
+        dev_mode = settings.get("dev_mode", False)
+
+        items = [
+            "WiFi",
+            "Updates",
+            "Console"
+        ]
+
+        if dev_mode:
+            items.append("Dev")
+
+        items.append("Back")
+
+        choice = simple_menu("SETTINGS", items)
+
+        if choice == "WiFi":
+            wifi_settings_menu()
+
+        elif choice == "Updates":
+            updates_settings_menu()
+
+        elif choice == "Console":
+            console_settings_menu()
+
+        elif choice == "Dev":
+            if dev_mode:
+                dev_settings_menu()
+
+        elif choice == "Back":
+            return
 
 def draw_home(games, index):
     oled.fill(BLACK)
