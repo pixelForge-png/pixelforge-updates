@@ -38,7 +38,7 @@
       "title": "None",
       "file": "helpers/buzzer_sounds.py",
       "module": "helpers.buzzer_sounds",
-      "version": 3,
+      "version": 4,
       "display_version": "1.0",
       "channel": "release",
       "url": "https://raw.githubusercontent.com/pixelForge-png/pixelforge-updates/main/helpers/buzzer_sounds.py"
