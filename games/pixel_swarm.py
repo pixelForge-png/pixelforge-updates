@@ -1,9 +1,7 @@
-from machine import Pin, SPI, ADC
-from st7735_fb import ST7735FB
 import time
 import random
 from helpers.buzzer_sounds import sound
-from helpers.oled_functions_test import (
+from helpers.oled_functions import (
     BLACK, WHITE, GRAY, DARK_GRAY, RED, GREEN, BLUE, YELLOW, CYAN, MAGENTA,
     ORANGE, PURPLE, HEALTH_GREEN, DANGER_RED, SHIELD_BLUE, SPACE_BLACK,
     ENEMY_BULLET, PLAYER_BULLET, LASER_COLOR, FREEZE_COLOR, BOMB_COLOR,
@@ -15,17 +13,8 @@ from helpers.oled_functions_test import (
 )
 
 # -----------------------------
-# Screen setup
+# Launcher-compatible constants
 # -----------------------------
-# Change these pins if your screen is wired differently.
-SPI_ID = 0
-SCK_PIN = 18
-MOSI_PIN = 19
-CS_PIN = 17
-DC_PIN = 21
-RST_PIN = 20
-BLK_PIN = None
-
 SCREEN_W = 160
 SCREEN_H = 80
 
@@ -34,28 +23,6 @@ MAX_ENEMY_BULLETS = 16
 
 # Player can move in both X and Y, but cannot fly behind enemy rows.
 PLAYER_BASE_MIN_Y = 0
-
-spi = SPI(SPI_ID, baudrate=40000000, polarity=0, phase=0, sck=Pin(SCK_PIN), mosi=Pin(MOSI_PIN))
-if BLK_PIN is not None:
-    backlight = Pin(BLK_PIN, Pin.OUT)
-    backlight.value(1)
-
-oled = ST7735FB(spi=spi, cs=Pin(CS_PIN, Pin.OUT), dc=Pin(DC_PIN, Pin.OUT), rst=Pin(RST_PIN, Pin.OUT), width=SCREEN_W, height=SCREEN_H, xstart=0, ystart=24, invert=False)
-
-# -----------------------------
-# Joystick and button setup
-# -----------------------------
-# X and Y must be ADC pins: GP26, GP27, or GP28.
-JOY_X = ADC(27)
-JOY_Y = ADC(26)
-
-# Four color buttons, active-low with PULL_UP.
-# Physical positions while holding the console:
-# Yellow = top, Green = bottom, Blue = left, Red = right.
-button_Y = Pin(4, Pin.IN, Pin.PULL_UP)
-button_G = Pin(3, Pin.IN, Pin.PULL_UP)
-button_B = Pin(5, Pin.IN, Pin.PULL_UP)
-button_R = Pin(2, Pin.IN, Pin.PULL_UP)
 
 PLAYER_BULLET_PALETTE = {"0": None, "1": PLAYER_BULLET}
 ENEMY_BULLET_PALETTE = {"0": None, "4": ENEMY_BULLET}
@@ -460,6 +427,17 @@ def save_highscore(score):
     with open("pixel_swarm_highscore.txt", "w") as file:
         file.write(str(score))
 
+class ButtonAdapter:
+    def __init__(self, press_func):
+        self.press_func = press_func
+
+    def value(self):
+        # Old Pixel Swarm code expects active-low Pin objects:
+        # 0 = pressed, 1 = not pressed.
+        if self.press_func():
+            return 0
+        return 1
+
 def wait_for_release(button):
     while button.value() == 0:
         time.sleep(0.01)
@@ -477,10 +455,20 @@ def swarm_info():
             return
         time.sleep(0.05)
 
-highscore = load_highscore()
-def main(oled, controls, settings):
-    global highscore
-    
+
+def main(oled_from_launcher, controls, settings):
+    global oled, button_Y, button_G, button_B, button_R, highscore
+
+    # Use the screen and controls from PixelForge OS.
+    oled = oled_from_launcher
+
+    # Keep the old .value() button style working.
+    button_Y = ButtonAdapter(controls["yellow"])
+    button_G = ButtonAdapter(controls["green"])
+    button_B = ButtonAdapter(controls["blue"])
+    button_R = ButtonAdapter(controls["red"])
+
+    highscore = load_highscore()
     while True:
         while True:
             oled.fill(SPACE_BLACK)
@@ -495,10 +483,10 @@ def main(oled, controls, settings):
                 wait_for_release(button_G)
                 break
             time.sleep(0.05)
-    
+
         transition(oled, 1)
         transition(oled, 0)
-    
+
         enemy_direction = 1
         start_time = time.ticks_ms()
         level = 1
@@ -534,13 +522,12 @@ def main(oled, controls, settings):
         player_x = 76
         player_y = 70
         score = 0
-        invincible = 0
-    
+
         while True:
             if freeze_timer > 0:
                 freeze_timer -= 1
             new_enemy_bullets = []
-    
+
             if lives <= 0:
                 oled.fill(BLACK)
                 live_time = time.ticks_diff(time.ticks_ms(), start_time) // 1000
@@ -556,7 +543,7 @@ def main(oled, controls, settings):
                 show_display(oled)
                 time.sleep(5)
                 break
-    
+
             if enemies == [] and boss_fight == False:
                 level += 1
                 if level > len(levels):
@@ -604,32 +591,32 @@ def main(oled, controls, settings):
                     was_a_boss_fight = False
                 bullets = []
                 enemy_bullets = []
-    
+
             # Joystick movement: X and Y movement.
             # The top limit stops the player from getting behind enemy rows.
-            left, right, up, down, raw_x, raw_y = joystick_direction(JOY_X, JOY_Y)
+            left, right, up, down = controls["joystick"]()
             player_top_limit = get_player_top_limit(enemies, boss_fight, boss)
-    
+
             if left and player_x > 0:
                 player_x -= player_speed
             elif right and player_x < SCREEN_W - 8:
                 player_x += player_speed
-    
+
             if up and player_y > player_top_limit:
                 player_y -= player_speed
             elif down and player_y < SCREEN_H - 8:
                 player_y += player_speed
-    
+
             if player_y < player_top_limit:
                 player_y = player_top_limit
-    
+
             # Auto shoot
             if overdrive_timer > 0:
                 overdrive_timer -= 1
                 current_shoot_delay = max(3, shoot_delay // 2)
             else:
                 current_shoot_delay = shoot_delay
-    
+
             shoot_timer += 1
             if shoot_timer >= current_shoot_delay:
                 shoot_timer = 0
@@ -639,7 +626,7 @@ def main(oled, controls, settings):
                         break
                     offset = int((i - (shot_count - 1) / 2) * 4)
                     bullets.append([center_x + offset, player_y - 3])
-    
+
             # Special ability with joystick press
             if button_G.value() == 0 and special_ready == True and special_ability != None:
                 if special_ability == "Laser":
@@ -678,7 +665,7 @@ def main(oled, controls, settings):
                 special_cooldown = special_cooldown_max
                 special_last_second = time.ticks_ms()
                 wait_for_release(button_G)
-    
+
             # Cooldown once per second
             if special_ready == False:
                 now = time.ticks_ms()
@@ -688,9 +675,9 @@ def main(oled, controls, settings):
                     if special_cooldown <= 0:
                         special_cooldown = 0
                         special_ready = True
-    
+
             oled.fill(SPACE_BLACK)
-    
+
             # Boss
             if boss_fight == True:
                 boss, bullets = update_boss(oled, boss, bullets, bullet_speed, freeze_timer, GAME_PALETTE, bullet_damage)
@@ -724,7 +711,7 @@ def main(oled, controls, settings):
                         special_ability = boss_choice[0]
                         special_ready = True
                         special_cooldown = 0
-    
+
             # Shield and player
             if shield > 0:
                 shield_x = player_x - 2
@@ -734,7 +721,7 @@ def main(oled, controls, settings):
                     shield_x = SCREEN_W - 12
                 draw_color_sprite(oled, shield_sprite, shield_x, player_y - 2, GAME_PALETTE)
             draw_color_sprite(oled, player, player_x, player_y, GAME_PALETTE)
-    
+
             # UI
             for i in range(lives):
                 draw_color_sprite(oled, life_ship, i * 8, 0, GAME_PALETTE)
@@ -745,7 +732,7 @@ def main(oled, controls, settings):
                     draw_tiny_text(oled, "R", 140, 10, GREEN)
                 else:
                     draw_tiny_text(oled, str(special_cooldown), 136, 10, YELLOW)
-    
+
             # Laser
             if laser_timer > 0:
                 oled.fill_rect(player_x + 3, 0, 2, player_y, LASER_COLOR)
@@ -762,7 +749,7 @@ def main(oled, controls, settings):
                 if boss_fight and boss != None:
                     if player_x + 3 < boss[2] + 16 and player_x + 5 > boss[2]:
                         boss[4] -= 1
-    
+
             # Player bullets against normal enemies
             new_bullets = []
             if boss_fight == False:
@@ -782,7 +769,7 @@ def main(oled, controls, settings):
                 bullets = new_bullets
                 for b in bullets:
                     draw_color_sprite(oled, bullet, b[0], b[1], PLAYER_BULLET_PALETTE)
-    
+
             # Enemy movement
             turn_around = False
             enemy_move_timer += 1
@@ -809,12 +796,12 @@ def main(oled, controls, settings):
                             enemy[0] += enemy_direction * (2 + enemy_speed_bonus)
                         else:
                             enemy[0] += enemy_direction * (1 + enemy_speed_bonus)
-    
+
                         if enemy[0] < 0:
                             enemy[0] = 0
                         elif enemy[0] > SCREEN_W - 8:
                             enemy[0] = SCREEN_W - 8
-    
+
                     # Slow downward pressure. As level rises, enemies drop more often.
                     enemy_drop_timer += 1
                     enemy_drop_delay = max(18, 55 - level * 2)
@@ -822,7 +809,7 @@ def main(oled, controls, settings):
                         enemy_drop_timer = 0
                         for enemy in enemies:
                             enemy[1] += 1
-    
+
             # Spawners occasionally create extra basic enemies.
             spawned_enemies = []
             if freeze_timer <= 0 and len(enemies) < 28:
@@ -834,7 +821,7 @@ def main(oled, controls, settings):
                             spawned_enemies.append([enemy[0], spawn_y, 1, "basic"])
             for enemy in spawned_enemies:
                 enemies.append(enemy)
-    
+
             # Enemy contact damage. If enemies reach the player, they hurt you.
             if invincible <= 0:
                 for enemy in enemies:
@@ -846,7 +833,7 @@ def main(oled, controls, settings):
                             sound(220, 9000, 0.02)
                         invincible = 25
                         break
-    
+
             # Draw enemies
             for enemy in enemies:
                 if enemy[3] == "basic":
@@ -873,7 +860,7 @@ def main(oled, controls, settings):
                     draw_color_sprite(oled, bomber, enemy[0], enemy[1], GAME_PALETTE)
                 elif enemy[3] == "elite":
                     draw_color_sprite(oled, elite, enemy[0], enemy[1], GAME_PALETTE)
-    
+
             # Enemy shooting and bullets
             if freeze_timer <= 0:
                 if enemies:
@@ -917,10 +904,10 @@ def main(oled, controls, settings):
                     else:
                         shoot_chance = 16
                         enemy_bullet_speed = 2 + level // 10
-    
+
                     # Lower shoot_chance means enemies shoot more often.
                     shoot_chance = max(3, shoot_chance - level // 2)
-    
+
                     if random.randint(0, shoot_chance) == 0 and len(enemy_bullets) < MAX_ENEMY_BULLETS:
                         if the_chosen_one[3] == "bomber":
                             for offset in [-4, 0, 4]:
@@ -933,7 +920,7 @@ def main(oled, controls, settings):
                     eb[1] += eb[3]
                     eb_x = bullet_screen_x(eb)
                     eb_y = bullet_screen_y(eb)
-    
+
                     if eb_x < player_x + 8 and eb_x + 2 > player_x and eb_y < player_y + 8 and eb_y + 3 > player_y and invincible <= 0:
                         if shield > 0:
                             shield -= 1
@@ -946,7 +933,9 @@ def main(oled, controls, settings):
                             draw_color_sprite(oled, enemy_bullet_sprite, eb_x, eb_y, ENEMY_BULLET_PALETTE)
                             new_enemy_bullets.append(eb)
                 enemy_bullets = new_enemy_bullets
-    
+
             if invincible > 0:
                 invincible -= 1
             show_display(oled)
+
+
