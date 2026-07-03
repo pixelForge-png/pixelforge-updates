@@ -4,6 +4,7 @@ import urequests
 import ujson
 import os
 import settings_manager
+import machine
 
 MANIFEST_URL = "https://raw.githubusercontent.com/pixelForge-png/pixelforge-updates/main/manifest.json"
 
@@ -155,14 +156,17 @@ def check_for_updates(screen_status=None):
 
     updated_count = 0
 
-    system_files = manifest.get("system_files", [])
-    updated_count += update_file_list(
+   system_files = manifest.get("system_files", [])
+
+    system_update_count = update_file_list(
         system_files,
         versions,
         "system_",
         dev_mode,
         screen_status
     )
+
+    updated_count += system_update_count
 
     helper_files = manifest.get("helpers", [])
     updated_count += update_file_list(
@@ -228,10 +232,16 @@ def check_for_updates(screen_status=None):
     if screen_status:
         if updated_count == 0:
             screen_status("UPDATES", "NO NEW", "FILES")
+            time.sleep(1)
         else:
             screen_status("UPDATED", str(updated_count), "FILE(S)")
-        time.sleep(1)
-
+            time.sleep(1)
+    
+        if system_update_count > 0:
+            screen_status("SYSTEM", "UPDATED", "RESTARTING")
+            time.sleep(2)
+            machine.reset()
+    
     return visible_games
 
 def load_manifest_only(screen_status=None):
