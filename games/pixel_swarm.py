@@ -522,6 +522,7 @@ def main(oled_from_launcher, controls, settings):
         player_x = 76
         player_y = 70
         score = 0
+        invincible = 0
 
         while True:
             if freeze_timer > 0:
