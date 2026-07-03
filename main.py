@@ -352,8 +352,6 @@ def settings_menu():
 
                 if connected:
                     update_manager.check_for_updates(screen_status)
-                    screen_status("RESTART", "AFTER SYSTEM", "UPDATES", YELLOW)
-                    time.sleep(2)
                 else:
                     screen_status("NO WIFI", "CHECK", "SETTINGS", RED)
                     time.sleep(2)
