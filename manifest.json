@@ -74,6 +74,16 @@
       "display_version": "1.0",
       "channel": "release",
       "url": "https://raw.githubusercontent.com/pixelForge-png/pixelforge-updates/main/systems/update_manager.py"
-    }
+    },
+    {
+    "id": "main",
+    "title": "None",
+    "file": "main.py",
+    "module": "main",
+    "version": 1,
+    "display_version": "1.0",
+    "channel": "release",
+    "url": "https://raw.githubusercontent.com/pixelForge-png/pixelforge-updates/main/systems/main.py"
+  }
   ]
 }
