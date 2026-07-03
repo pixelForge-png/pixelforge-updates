@@ -1,7 +1,7 @@
 from machine import Pin, PWM
 import time
 
-buzzer = PWM(Pin(19))
+buzzer = PWM(Pin(6))
 buzzer.freq(440)
 buzzer.duty_u16(0)
 
