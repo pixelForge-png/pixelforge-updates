@@ -109,6 +109,7 @@ def update_file_list(file_list, versions, version_prefix, dev_mode, screen_statu
         file_id = version_prefix + item["id"]
         filepath = "/" + item["file"]
         version = item["version"]
+        display_version = item.get("display_version", str(version))
         url = item["url"]
 
         current_version = versions.get(file_id, 0)
@@ -125,7 +126,7 @@ def update_file_list(file_list, versions, version_prefix, dev_mode, screen_statu
 
         if needs_update:
             if screen_status:
-                screen_status("DOWNLOADING", item["id"][:16], "v" + str(version))
+                screen_status("DOWNLOADING", item["id"][:16], "v" + display_version)
 
             try:
                 download_file(url, filepath)
