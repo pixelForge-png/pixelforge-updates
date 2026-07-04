@@ -22,6 +22,17 @@
       "channel": "release",
       "mode": "multiplayer",
       "url": "https://raw.githubusercontent.com/pixelForge-png/pixelforge-updates/main/games/mp_pong.py"
+    },
+    {
+      "id": "mp_pong_ws",
+      "title": "Pong WS",
+      "file": "games/mp_pong_ws.py",
+      "module": "games.mp_pong_ws",
+      "version": 1,
+      "display_version": "1.0",
+      "channel": "release",
+      "mode": "multiplayer",
+      "url": "https://raw.githubusercontent.com/pixelForge-png/pixelforge-updates/main/games/mp_pong_ws.py"
     }
   ],
   "helpers": [
