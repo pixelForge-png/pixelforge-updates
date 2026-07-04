@@ -92,7 +92,7 @@
         "title": "None",
         "file": "update_manager.py",
         "module": "update_manager",
-        "version": 6,
+        "version": 7,
         "display_version": "1.0",
         "channel": "release",
         "url": "https://raw.githubusercontent.com/pixelForge-png/pixelforge-updates/main/systems/update_manager.py"
@@ -102,7 +102,7 @@
       "title": "None",
       "file": "main.py",
       "module": "main",
-      "version": 4,
+      "version": 5,
       "display_version": "1.0",
       "channel": "release",
       "url": "https://raw.githubusercontent.com/pixelForge-png/pixelforge-updates/main/main.py"
