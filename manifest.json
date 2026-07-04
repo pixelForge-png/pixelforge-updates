@@ -64,6 +64,16 @@
       "display_version": "1.0",
       "channel": "release",
       "url": "https://raw.githubusercontent.com/pixelForge-png/pixelforge-updates/main/helpers/online_relay.py"
+    },
+    {
+      "id": "ws_relay",
+      "title": "None",
+      "file": "helpers/ws_relay.py",
+      "module": "helpers.ws_relay",
+      "version": 1,
+      "display_version": "1.0",
+      "channel": "release",
+      "url": "https://raw.githubusercontent.com/pixelForge-png/pixelforge-updates/main/helpers/ws_relay.py"
     }
   ],
   "system_files": [
