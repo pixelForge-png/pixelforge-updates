@@ -28,7 +28,7 @@
       "title": "Pong WS",
       "file": "games/mp_pong_ws.py",
       "module": "games.mp_pong_ws",
-      "version": 2,
+      "version": 3,
       "display_version": "1.0",
       "channel": "release",
       "mode": "multiplayer",
