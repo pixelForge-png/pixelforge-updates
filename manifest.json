@@ -42,6 +42,16 @@
       "display_version": "1.0",
       "channel": "release",
       "url": "https://raw.githubusercontent.com/pixelForge-png/pixelforge-updates/main/helpers/buzzer_sounds.py"
+    },
+    {
+      "id": "online_relay",
+      "title": "None",
+      "file": "helpers/online_relay.py",
+      "module": "helpers.online_relay",
+      "version": 1,
+      "display_version": "1.0",
+      "channel": "release",
+      "url": "https://raw.githubusercontent.com/pixelForge-png/pixelforge-updates/main/helpers/online_relay.py"
     }
   ],
   "system_files": [
