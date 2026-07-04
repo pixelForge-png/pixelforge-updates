@@ -33,9 +33,20 @@ class WebSocketClient:
         addr = socket.getaddrinfo(self.host, self.port)[0][-1]
 
         raw_sock = socket.socket()
+
+        try:
+            raw_sock.settimeout(8)
+        except:
+            pass
+
         raw_sock.connect(addr)
 
         self.sock = ssl.wrap_socket(raw_sock, server_hostname=self.host)
+
+        try:
+            self.sock.settimeout(8)
+        except:
+            pass
 
         key = _make_key()
         path = "/ws?code=" + str(code) + "&player=" + str(player)
@@ -52,32 +63,62 @@ class WebSocketClient:
 
         self.sock.write(request.encode())
 
-        response = self.sock.read(1024)
+        response = self._read_http_header(8000)
 
-        if response == None or b"101" not in response:
-            raise Exception("ws handshake failed")
+        if response == None:
+            raise Exception("no handshake")
 
+        if b"101" not in response:
+            raise Exception("bad handshake")
+
+        # After connecting, use shorter reads.
         try:
-            self.sock.settimeout(0.03)
+            self.sock.settimeout(0.08)
         except:
             pass
 
-        # Try to read initial OK message, but do not require it.
+        # Read initial OK|code message if it is already waiting.
         self.recv_text()
 
-    def _read_exact(self, amount, max_ms=80):
+    def _read_http_header(self, max_ms):
+        data = b""
+        start = time.ticks_ms()
+
+        while True:
+            if b"\r\n\r\n" in data:
+                return data
+
+            if time.ticks_diff(time.ticks_ms(), start) > max_ms:
+                return None
+
+            try:
+                chunk = self.sock.read(1)
+
+                if chunk != None and len(chunk) > 0:
+                    data += chunk
+
+                    if len(data) > 1200:
+                        return data
+
+            except:
+                if time.ticks_diff(time.ticks_ms(), start) > max_ms:
+                    return None
+
+            time.sleep(0.001)
+
+    def _read_exact(self, amount, max_ms=120):
         data = b""
         start = time.ticks_ms()
 
         while len(data) < amount:
+            if time.ticks_diff(time.ticks_ms(), start) > max_ms:
+                return None
+
             try:
                 chunk = self.sock.read(amount - len(data))
 
                 if chunk != None and len(chunk) > 0:
                     data += chunk
-                else:
-                    if time.ticks_diff(time.ticks_ms(), start) > max_ms:
-                        return None
 
             except:
                 if time.ticks_diff(time.ticks_ms(), start) > max_ms:
