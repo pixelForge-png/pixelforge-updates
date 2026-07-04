@@ -8,6 +8,11 @@ import settings_manager
 import update_manager
 import keyboard
 
+try:
+    from helpers import online_relay
+except:
+    online_relay = None
+
 SCK_PIN = 18
 MOSI_PIN = 19
 CS_PIN = 17
