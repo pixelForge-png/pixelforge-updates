@@ -57,14 +57,15 @@ class WebSocketClient:
         if response == None or b"101" not in response:
             raise Exception("ws handshake failed")
 
-        # Small timeout, but not crazy tiny.
-        # The old 0.01 timeout was too aggressive.
         try:
-            self.sock.settimeout(0.15)
+            self.sock.settimeout(0.03)
         except:
             pass
 
-    def _read_exact(self, amount):
+        # Try to read initial OK message, but do not require it.
+        self.recv_text()
+
+    def _read_exact(self, amount, max_ms=80):
         data = b""
         start = time.ticks_ms()
 
@@ -75,11 +76,11 @@ class WebSocketClient:
                 if chunk != None and len(chunk) > 0:
                     data += chunk
                 else:
-                    if time.ticks_diff(time.ticks_ms(), start) > 250:
+                    if time.ticks_diff(time.ticks_ms(), start) > max_ms:
                         return None
 
             except:
-                if time.ticks_diff(time.ticks_ms(), start) > 250:
+                if time.ticks_diff(time.ticks_ms(), start) > max_ms:
                     return None
 
             time.sleep(0.001)
@@ -139,7 +140,6 @@ class WebSocketClient:
                 length = (ext[0] << 8) | ext[1]
 
             elif length == 127:
-                # We do not use huge messages.
                 return None
 
             mask = None
@@ -163,15 +163,9 @@ class WebSocketClient:
 
                 payload = bytes(unmasked)
 
-            # Close frame
             if opcode == 0x8:
                 return None
 
-            # Ping frame
-            if opcode == 0x9:
-                return None
-
-            # Text frame
             if opcode == 0x1:
                 return payload.decode()
 
@@ -179,6 +173,14 @@ class WebSocketClient:
 
         except:
             return None
+
+    def sync(self, data):
+        ok = self.send_text("SYNC|" + str(data))
+
+        if not ok:
+            return None
+
+        return self.recv_text()
 
     def close(self):
         try:
