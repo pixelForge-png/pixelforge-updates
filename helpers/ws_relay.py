@@ -1,14 +1,11 @@
 import socket
 import ssl
 import ubinascii
-import uhashlib
 import urandom
 import time
 
 RELAY_HOST = "pixelforge-relay-server.onrender.com"
 RELAY_PORT = 443
-
-_GUID = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11"
 
 def _b64(data):
     return ubinascii.b2a_base64(data).strip().decode()
@@ -34,6 +31,7 @@ class WebSocketClient:
 
     def connect(self, code, player):
         addr = socket.getaddrinfo(self.host, self.port)[0][-1]
+
         raw_sock = socket.socket()
         raw_sock.connect(addr)
 
@@ -54,85 +52,126 @@ class WebSocketClient:
 
         self.sock.write(request.encode())
 
-        response = self.sock.read(512)
+        response = self.sock.read(1024)
 
         if response == None or b"101" not in response:
             raise Exception("ws handshake failed")
 
-        # Keep reads from freezing forever.
+        # Small timeout, but not crazy tiny.
+        # The old 0.01 timeout was too aggressive.
         try:
-            self.sock.settimeout(0.01)
+            self.sock.settimeout(0.15)
         except:
             pass
 
+    def _read_exact(self, amount):
+        data = b""
+        start = time.ticks_ms()
+
+        while len(data) < amount:
+            try:
+                chunk = self.sock.read(amount - len(data))
+
+                if chunk != None and len(chunk) > 0:
+                    data += chunk
+                else:
+                    if time.ticks_diff(time.ticks_ms(), start) > 250:
+                        return None
+
+            except:
+                if time.ticks_diff(time.ticks_ms(), start) > 250:
+                    return None
+
+            time.sleep(0.001)
+
+        return data
+
     def send_text(self, text):
         if self.sock == None:
-            return
+            return False
 
-        payload = text.encode()
-        length = len(payload)
+        try:
+            payload = text.encode()
+            length = len(payload)
 
-        # Client-to-server frames must be masked.
-        if length < 126:
-            header = bytes([0x81, 0x80 | length])
-        elif length < 65536:
-            header = bytes([0x81, 0x80 | 126, (length >> 8) & 255, length & 255])
-        else:
-            raise Exception("message too long")
+            if length < 126:
+                header = bytes([0x81, 0x80 | length])
+            elif length < 65536:
+                header = bytes([
+                    0x81,
+                    0x80 | 126,
+                    (length >> 8) & 255,
+                    length & 255
+                ])
+            else:
+                return False
 
-        frame = header + _mask_payload(payload)
-        self.sock.write(frame)
+            frame = header + _mask_payload(payload)
+            self.sock.write(frame)
+            return True
+
+        except:
+            return False
 
     def recv_text(self):
         if self.sock == None:
             return None
 
         try:
-            first = self.sock.read(1)
+            header = self._read_exact(2)
 
-            if first == None or len(first) == 0:
+            if header == None:
                 return None
 
-            second = self.sock.read(1)
-
-            if second == None or len(second) == 0:
-                return None
-
-            first = first[0]
-            second = second[0]
+            first = header[0]
+            second = header[1]
 
             opcode = first & 0x0F
             masked = (second & 0x80) != 0
             length = second & 0x7F
 
             if length == 126:
-                ext = self.sock.read(2)
-                if ext == None or len(ext) < 2:
+                ext = self._read_exact(2)
+
+                if ext == None:
                     return None
+
                 length = (ext[0] << 8) | ext[1]
 
             elif length == 127:
-                # We do not use giant packets.
+                # We do not use huge messages.
                 return None
 
             mask = None
+
             if masked:
-                mask = self.sock.read(4)
+                mask = self._read_exact(4)
 
-            payload = self.sock.read(length)
+                if mask == None:
+                    return None
 
-            if payload == None or len(payload) < length:
+            payload = self._read_exact(length)
+
+            if payload == None:
                 return None
 
-            if masked and mask != None:
+            if masked:
                 unmasked = bytearray()
+
                 for i in range(len(payload)):
                     unmasked.append(payload[i] ^ mask[i % 4])
+
                 payload = bytes(unmasked)
 
+            # Close frame
             if opcode == 0x8:
                 return None
 
+            # Ping frame
+            if opcode == 0x9:
+                return None
+
+            # Text frame
             if opcode == 0x1:
                 return payload.decode()
 
