@@ -13,15 +13,15 @@
       "url": "https://raw.githubusercontent.com/pixelForge-png/pixelforge-updates/main/games/pixel_swarm.py"
     },
     {
-      "id": "mp_test",
-      "title": "MP Test",
-      "file": "games/mp_test.py",
-      "module": "games.mp_test",
+      "id": "mp_pong",
+      "title": "Pong",
+      "file": "games/mp_pong.py",
+      "module": "games.mp_pong",
       "version": 1,
       "display_version": "1.0",
       "channel": "release",
       "mode": "multiplayer",
-      "url": "https://raw.githubusercontent.com/pixelForge-png/pixelforge-updates/main/games/mp_test.py"
+      "url": "https://raw.githubusercontent.com/pixelForge-png/pixelforge-updates/main/games/mp_pong.py"
     }
   ],
   "helpers": [
