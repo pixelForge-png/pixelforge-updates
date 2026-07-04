@@ -192,7 +192,8 @@ def check_for_updates(screen_status=None):
         game_info[game["id"]] = {
             "title": game.get("title", game["id"]),
             "display_version": game.get("display_version", str(game["version"])),
-            "channel": game.get("channel", "release")
+            "channel": game.get("channel", "release"),
+            "mode": game.get("mode", "singleplayer")
         }
 
         game_id = game["id"]
