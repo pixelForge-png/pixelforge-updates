@@ -69,7 +69,12 @@ class WebSocketClient:
             raise Exception("no handshake")
 
         if b"101" not in response:
-            raise Exception("bad handshake")
+            try:
+                text = response.decode()
+                first_line = text.split("\r\n")[0]
+                raise Exception(first_line[:18])
+            except:
+                raise Exception("bad handshake")
 
         # After connecting, use shorter reads.
         try:
