@@ -9,6 +9,7 @@
       "version": 10,
       "display_version": "1.0",
       "channel": "release",
+      "mode": "singleplayer",
       "url": "https://raw.githubusercontent.com/pixelForge-png/pixelforge-updates/main/games/pixel_swarm.py"
     }
   ],
