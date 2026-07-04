@@ -169,7 +169,7 @@ def make_title(game_id):
 
     return " ".join(title_parts)
 
-def list_local_games(include_dev=False):
+def list_local_games(include_dev=False, mode="singleplayer"):
     ensure_folders()
 
     game_info = settings_manager.load_game_info()
@@ -189,6 +189,11 @@ def list_local_games(include_dev=False):
             title = make_title(game_id)
             info = game_info.get(game_id, {})
 
+            game_mode = info.get("mode", "singleplayer")
+
+            if game_mode != mode:
+                continue
+
             channel = info.get("channel", "release")
             is_dev_game = (
                 game_id.startswith("test") or
@@ -206,6 +211,7 @@ def list_local_games(include_dev=False):
                 "id": game_id,
                 "title": info.get("title", title),
                 "display_version": info.get("display_version", "?"),
+                "mode": game_mode,
                 "file": "games/" + filename,
                 "module": "games." + game_id,
                 "version": 0
@@ -598,33 +604,43 @@ def draw_home(games, index):
     oled.text("Y=Settings", 2, 70, GRAY)
     oled.show()
 
-def home_screen():
-    settings = settings_manager.load_settings()
-
-    if settings.get("auto_update", True):
-        if settings.get("wifi_ssid", "") != "":
-            connected = update_manager.connect_wifi(
-                settings.get("wifi_ssid", ""),
-                settings.get("wifi_password", ""),
-                oled,
-                screen_status
-            )
-
-            if connected:
-                update_manager.check_for_updates(screen_status)
-
-    games = list_local_games()
+def game_carousel(mode="singleplayer"):
+    games = list_local_games(mode=mode)
     index = 0
     last_move = time.ticks_ms()
 
     while True:
-        games = list_local_games()
+        games = list_local_games(mode=mode)
 
         if len(games) > 0:
             if index >= len(games):
                 index = 0
 
-        draw_home(games, index)
+        oled.fill(BLACK)
+
+        if mode == "multiplayer":
+            center_text("MP GAMES", 3, CYAN)
+        else:
+            center_text("SINGLE PLAYER", 3, CYAN)
+
+        oled.text("<", 3, 36, YELLOW)
+        oled.text(">", 150, 36, YELLOW)
+
+        if len(games) == 0:
+            center_text("NO GAMES", 30, RED)
+            center_text("YELLOW BACK", 50, WHITE)
+        else:
+            game = games[index]
+            center_text(game["title"][:18], 24, WHITE)
+            center_text("v" + game.get("display_version", "?"), 40, CYAN)
+
+            if mode == "multiplayer":
+                center_text("GREEN HOST", 58, GREEN)
+            else:
+                center_text("GREEN PLAY", 58, GREEN)
+
+        oled.text("Y=Back", 2, 70, GRAY)
+        oled.show()
 
         left, right, up, down = joystick_direction()
         now = time.ticks_ms()
@@ -642,17 +658,293 @@ def home_screen():
                     index = 0
                 last_move = now
 
-        if green_pressed():
+        if green_pressed() and len(games) > 0:
             wait_release()
 
-            if len(games) > 0:
+            if mode == "singleplayer":
                 run_game(games[index])
+            else:
+                return games[index]
 
         if yellow_pressed():
             wait_release()
-            settings_menu()
+            return None
 
         time.sleep(0.03)
+
+def multiplayer_host_menu():
+    if online_relay == None:
+        screen_status("MP ERROR", "NO RELAY", "UPDATE OS", RED)
+        time.sleep(2)
+        return
+
+    settings = settings_manager.load_settings()
+
+    connected = update_manager.connect_wifi(
+        settings.get("wifi_ssid", ""),
+        settings.get("wifi_password", ""),
+        oled,
+        screen_status
+    )
+
+    if not connected:
+        screen_status("NO WIFI", "CONNECT", "FIRST", RED)
+        time.sleep(2)
+        return
+
+    screen_status("ROOM", "CREATING", "", CYAN)
+
+    room = online_relay.create_room()
+
+    if not room.get("ok", False):
+        screen_status("ROOM FAIL", str(room.get("error", ""))[:16], "", RED)
+        time.sleep(3)
+        return
+
+    code = room.get("code", "00000")
+
+    games = list_local_games(mode="multiplayer")
+    index = 0
+    last_move = time.ticks_ms()
+
+    while True:
+        oled.fill(BLACK)
+        center_text("CODE " + code, 3, CYAN)
+
+        if len(games) == 0:
+            center_text("NO MP GAMES", 30, RED)
+            center_text("YELLOW BACK", 50, WHITE)
+        else:
+            game = games[index]
+
+            oled.text("<", 3, 36, YELLOW)
+            oled.text(">", 150, 36, YELLOW)
+
+            center_text(game["title"][:18], 24, WHITE)
+            center_text("v" + game.get("display_version", "?"), 40, CYAN)
+            center_text("GREEN START", 58, GREEN)
+
+        oled.text("Y=Back", 2, 70, GRAY)
+        oled.show()
+
+        left, right, up, down = joystick_direction()
+        now = time.ticks_ms()
+
+        if len(games) > 0 and time.ticks_diff(now, last_move) > 220:
+            if left:
+                index -= 1
+                if index < 0:
+                    index = len(games) - 1
+                last_move = now
+
+            elif right:
+                index += 1
+                if index >= len(games):
+                    index = 0
+                last_move = now
+
+        if green_pressed() and len(games) > 0:
+            wait_release()
+
+            game = games[index]
+            result = online_relay.set_game(code, game["id"])
+
+            if not result.get("ok", False):
+                screen_status("SET GAME", "FAILED", "", RED)
+                time.sleep(2)
+            else:
+                run_multiplayer_game(game, "host", code)
+
+        if yellow_pressed():
+            wait_release()
+            return
+
+        time.sleep(0.03)
+
+def multiplayer_join_menu():
+    if online_relay == None:
+        screen_status("MP ERROR", "NO RELAY", "UPDATE OS", RED)
+        time.sleep(2)
+        return
+
+    settings = settings_manager.load_settings()
+
+    connected = update_manager.connect_wifi(
+        settings.get("wifi_ssid", ""),
+        settings.get("wifi_password", ""),
+        oled,
+        screen_status
+    )
+
+    if not connected:
+        screen_status("NO WIFI", "CONNECT", "FIRST", RED)
+        time.sleep(2)
+        return
+
+    code = keyboard.type_text(
+        oled,
+        controls,
+        "ROOM CODE",
+        ""
+    )
+
+    if len(code) != 5:
+        screen_status("BAD CODE", "NEED", "5 DIGITS", RED)
+        time.sleep(2)
+        return
+
+    screen_status("JOINING", code, "WAIT", CYAN)
+
+    result = online_relay.join_room(code)
+
+    if not result.get("ok", False):
+        screen_status("JOIN FAIL", str(result.get("error", ""))[:16], "", RED)
+        time.sleep(3)
+        return
+
+    wait_for_host_game(code)
+
+def wait_for_host_game(code):
+    last_check = time.ticks_ms()
+    status = {}
+
+    while True:
+        oled.fill(BLACK)
+        center_text("JOINED", 3, GREEN)
+        center_text("CODE " + code, 20, CYAN)
+
+        game_id = status.get("game", "")
+
+        if game_id == "":
+            center_text("WAIT HOST", 42, WHITE)
+        else:
+            center_text("GAME:", 34, WHITE)
+            center_text(game_id[:18], 50, YELLOW)
+
+        oled.text("Y=Back", 2, 70, GRAY)
+        oled.show()
+
+        now = time.ticks_ms()
+
+        if time.ticks_diff(now, last_check) > 1500:
+            status = online_relay.get_status(code)
+            last_check = now
+
+            if status.get("ok", False):
+                game_id = status.get("game", "")
+
+                if game_id != "":
+                    game = find_game_by_id(game_id)
+
+                    if game != None:
+                        run_multiplayer_game(game, "joiner", code)
+                        return
+                    else:
+                        screen_status("NO GAME", game_id[:16], "INSTALLED", RED)
+                        time.sleep(3)
+                        return
+
+        if yellow_pressed():
+            wait_release()
+            return
+
+        time.sleep(0.03)
+
+def find_game_by_id(game_id):
+    games = list_local_games(mode="multiplayer")
+
+    for game in games:
+        if game["id"] == game_id:
+            return game
+
+    return None
+
+def run_multiplayer_game(game, role, room_code):
+    oled.fill(BLACK)
+    center_text("MP LOADING", 16, YELLOW)
+    center_text(role.upper(), 36, CYAN)
+    center_text(room_code, 56, WHITE)
+    oled.show()
+    time.sleep(1)
+
+    try:
+        module_name = game["module"]
+
+        try:
+            import sys
+            if module_name in sys.modules:
+                del sys.modules[module_name]
+        except:
+            pass
+
+        gc.collect()
+
+        game_module = __import__(module_name, None, None, ["main"])
+
+        if hasattr(game_module, "main"):
+            game_module.main(
+                oled,
+                controls,
+                settings_manager.load_settings(),
+                role,
+                room_code
+            )
+        else:
+            screen_status("GAME ERROR", "NO main()", game["title"][:16], RED)
+            time.sleep(2)
+
+    except Exception as e:
+        print("MP GAME ERROR:", e)
+        screen_status("MP ERROR", str(e)[:16], game["title"][:16], RED)
+        time.sleep(3)
+
+def multiplayer_menu():
+    while True:
+        choice = simple_menu("MULTIPLAYER", [
+            "Host",
+            "Join",
+            "Back"
+        ])
+
+        if choice == "Host":
+            multiplayer_host_menu()
+
+        elif choice == "Join":
+            multiplayer_join_menu()
+
+        elif choice == "Back":
+            return
+
+def home_screen():
+    settings = settings_manager.load_settings()
+
+    if settings.get("auto_update", True):
+        if settings.get("wifi_ssid", "") != "":
+            connected = update_manager.connect_wifi(
+                settings.get("wifi_ssid", ""),
+                settings.get("wifi_password", ""),
+                oled,
+                screen_status
+            )
+
+            if connected:
+                update_manager.check_for_updates(screen_status)
+
+    while True:
+        choice = simple_menu("PIXELFORGE", [
+            "Single Player",
+            "Multiplayer",
+            "Settings"
+        ])
+
+        if choice == "Single Player":
+            game_carousel("singleplayer")
+
+        elif choice == "Multiplayer":
+            multiplayer_menu()
+
+        elif choice == "Settings":
+            settings_menu()
 
 ensure_folders()
 
