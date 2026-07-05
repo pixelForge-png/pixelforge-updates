@@ -1,6 +1,6 @@
 import time
 import gc
-from helpers.ws_relay import WebSocketClient
+from helpers.mp_client import MultiplayerClient
 
 SCREEN_W = 160
 SCREEN_H = 80
@@ -317,7 +317,8 @@ def draw_game(oled, role, p1, p2, net_ok):
 def main(oled, controls, settings, role, room_code):
     wait_screen(oled, "FORGE FIGHTERS", "CONNECTING", room_code)
 
-    ws = WebSocketClient()
+    mode = settings.get("mp_mode", "online")
+    ws = MultiplayerClient(mode)
 
     try:
         ws.connect(room_code, role)
