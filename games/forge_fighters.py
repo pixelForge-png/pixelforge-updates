@@ -157,6 +157,25 @@ def parse_state(data):
     except:
         return None
 
+def smooth_correct_player(local_player, real_player):
+    # Smoothly correct x/y so the player does not snap.
+    diff_x = real_player[0] - local_player[0]
+    diff_y = real_player[1] - local_player[1]
+
+    if diff_x > 18 or diff_x < -18 or diff_y > 18 or diff_y < -18:
+        local_player[0] = real_player[0]
+        local_player[1] = real_player[1]
+    else:
+        local_player[0] = local_player[0] + diff_x // 3
+        local_player[1] = local_player[1] + diff_y // 3
+
+    # These should match the host.
+    local_player[2] = real_player[2]
+    local_player[3] = real_player[3]
+    local_player[4] = real_player[4]
+    local_player[5] = real_player[5]
+    local_player[6] = real_player[6]
+
 
 def make_player(x, y, facing):
     # x, y, vx, vy, facing, on_ground, falls
@@ -370,27 +389,43 @@ def main(oled, controls, settings, role, room_code):
         # -------------------------
         # JOINER: send input, receive state
         # -------------------------
+        # -------------------------
+        # JOINER: local prediction + host correction
+        # -------------------------
         else:
-            # Joiner sends controls to host.
-            # The host decides the real positions.
+            # Move Player 2 locally immediately.
+            # This makes the joiner's own sprite feel smooth.
+            if time.ticks_diff(now, last_frame) > FRAME_MS:
+                apply_player_input(p2, left, right, up)
+                update_physics(p2, 2)
+                last_frame = now
+        
+            # Send input to host and receive real state.
             if time.ticks_diff(now, last_sync) > SYNC_MS:
                 packet = make_input_packet(left, right, up)
-
+        
                 reply = ws.sync(packet)
                 peer = parse_peer_message(reply)
-
+        
                 if peer != "":
                     parsed = parse_state(peer)
-
+        
                     if parsed != None:
-                        p1, p2 = parsed
+                        real_p1, real_p2 = parsed
+        
+                        # Player 1 is host-controlled, so use host state directly.
+                        p1 = real_p1
+        
+                        # Player 2 is controlled locally, so smooth-correct it.
+                        smooth_correct_player(p2, real_p2)
+        
                         net_ok = True
                         last_good_net = now
                     else:
                         net_ok = False
                 else:
                     net_ok = False
-
+        
                 last_sync = now
 
         if time.ticks_diff(now, last_good_net) > 1000:
