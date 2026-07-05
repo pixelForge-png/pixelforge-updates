@@ -26,7 +26,16 @@ class LocalSocketClient:
             self._join_connect()
 
     def _host_connect(self):
+        # Turn off normal Wi-Fi mode so the Pico can act as the local host cleanly.
+        try:
+            sta = network.WLAN(network.STA_IF)
+            sta.active(False)
+        except:
+            pass
+
         ap = network.WLAN(network.AP_IF)
+        ap.active(False)
+        time.sleep(0.3)
         ap.active(True)
 
         try:
@@ -34,14 +43,15 @@ class LocalSocketClient:
         except:
             ap.config(essid=LOCAL_SSID)
 
-        time.sleep(1)
+        # Give the hotspot time to start.
+        time.sleep(2)
 
         self.sock = socket.socket()
         self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.sock.bind(("0.0.0.0", LOCAL_PORT))
         self.sock.listen(1)
 
-        # Wait for joiner.
+        # This waits here until the joiner connects.
         self.conn, addr = self.sock.accept()
 
         try:
@@ -50,19 +60,38 @@ class LocalSocketClient:
             pass
 
     def _join_connect(self):
+        # Turn off AP mode on the joiner.
+        try:
+            ap = network.WLAN(network.AP_IF)
+            ap.active(False)
+        except:
+            pass
+
         wlan = network.WLAN(network.STA_IF)
+
+        # IMPORTANT:
+        # Force disconnect from home Wi-Fi first.
         wlan.active(True)
 
-        if not wlan.isconnected():
-            wlan.connect(LOCAL_SSID, LOCAL_PASSWORD)
+        try:
+            wlan.disconnect()
+        except:
+            pass
 
-            start = time.ticks_ms()
+        time.sleep(0.5)
 
-            while not wlan.isconnected():
-                if time.ticks_diff(time.ticks_ms(), start) > 12000:
-                    raise Exception("local wifi fail")
+        wlan.connect(LOCAL_SSID, LOCAL_PASSWORD)
 
-                time.sleep(0.2)
+        start = time.ticks_ms()
+
+        while not wlan.isconnected():
+            if time.ticks_diff(time.ticks_ms(), start) > 15000:
+                raise Exception("local wifi 110")
+
+            time.sleep(0.2)
+
+        # Give the network a moment after connecting.
+        time.sleep(0.5)
 
         self.conn = socket.socket()
 
@@ -120,7 +149,6 @@ class LocalSocketClient:
             if text.startswith("J|"):
                 self.peer_data = text[2:]
                 self.message_id += 1
-
         else:
             if text.startswith("H|"):
                 self.peer_data = text[2:]
