@@ -1,6 +1,7 @@
 import time
 import random
 from helpers.ws_relay import WebSocketClient
+import gc
 
 SCREEN_W = 160
 SCREEN_H = 80
@@ -150,6 +151,7 @@ def main(oled, controls, settings, role, room_code):
 
     last_frame = time.ticks_ms()
     last_sync = time.ticks_ms()
+    last_gc = time.ticks_ms()
     net_ok = False
 
     wait_screen(oled, "WS PONG", role.upper(), room_code)
@@ -225,7 +227,7 @@ def main(oled, controls, settings, role, room_code):
 
                 last_frame = now
 
-            if time.ticks_diff(now, last_sync) > 50:
+            if time.ticks_diff(now, last_sync) > 70:
                 state = make_state(
                     ball_x,
                     ball_y,
@@ -254,7 +256,7 @@ def main(oled, controls, settings, role, room_code):
 
             joiner_y = clamp(joiner_y, 12, SCREEN_H - PADDLE_H)
 
-            if time.ticks_diff(now, last_sync) > 50:
+            if time.ticks_diff(now, last_sync) > 70:
                 reply = ws.sync(str(int(joiner_y)))
                 peer = parse_peer_message(reply)
 
@@ -293,5 +295,8 @@ def main(oled, controls, settings, role, room_code):
             joiner_score,
             net_ok
         )
+        if time.ticks_diff(now, last_gc) > 5000:
+            gc.collect()
+            last_gc = now
 
         time.sleep(0.02)
