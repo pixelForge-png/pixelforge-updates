@@ -139,6 +139,60 @@ def update_file_list(file_list, versions, version_prefix, dev_mode, screen_statu
 
     return updated_count
 
+def uninstall_removed_games(manifest_games, versions, game_info, dev_mode, screen_status=None):
+    removed_count = 0
+
+    allowed_game_ids = []
+
+    for game in manifest_games:
+        channel = game.get("channel", "release")
+
+        # Friend/player consoles should not keep dev games.
+        if channel == "dev" and not dev_mode:
+            continue
+
+        allowed_game_ids.append(game["id"])
+
+    try:
+        local_files = os.listdir("/games")
+    except:
+        local_files = []
+
+    for filename in local_files:
+        if filename.endswith(".py") and filename != "__init__.py":
+            game_id = filename[:-3]
+
+            if game_id not in allowed_game_ids:
+                filepath = "/games/" + filename
+
+                if screen_status:
+                    screen_status("REMOVING", game_id[:16], "OLD GAME")
+                    time.sleep(0.5)
+
+                try:
+                    os.remove(filepath)
+                    removed_count += 1
+                except Exception as e:
+                    if screen_status:
+                        screen_status("REMOVE FAIL", game_id[:16], str(e)[:16])
+                        time.sleep(2)
+
+                # Remove saved version number
+                try:
+                    if game_id in versions:
+                        del versions[game_id]
+                except:
+                    pass
+
+                # Remove saved display info
+                try:
+                    if game_id in game_info:
+                        del game_info[game_id]
+                except:
+                    pass
+
+    return removed_count
+
 def check_for_updates(screen_status=None):
     ensure_folder("/games")
     ensure_folder("/data")
@@ -227,6 +281,16 @@ def check_for_updates(screen_status=None):
                 if screen_status:
                     screen_status("DL FAILED", title[:16], str(e)[:16])
                     time.sleep(2)
+
+    removed_count = uninstall_removed_games(
+        games,
+        versions,
+        game_info,
+        dev_mode,
+        screen_status
+    )
+    
+    updated_count += removed_count
 
     settings_manager.save_game_info(game_info)
     settings_manager.save_versions(versions)
