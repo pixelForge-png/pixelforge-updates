@@ -113,7 +113,7 @@
         "title": "None",
         "file": "update_manager.py",
         "module": "update_manager",
-        "version": 7,
+        "version": 8,
         "display_version": "1.0",
         "channel": "release",
         "url": "https://raw.githubusercontent.com/pixelForge-png/pixelforge-updates/main/systems/update_manager.py"
