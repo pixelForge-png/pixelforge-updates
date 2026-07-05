@@ -265,7 +265,13 @@ def main(oled, controls, settings, role, room_code):
                         ball_x = state[0]
                         ball_y = state[1]
                         host_y = state[2]
-                        joiner_y = state[3]
+                    
+                        # IMPORTANT:
+                        # Do NOT overwrite joiner_y here.
+                        # The joiner should control and display its own paddle locally.
+                        # The host's joiner_y is always a little old because of network delay.
+                        # joiner_y = state[3]
+                    
                         host_score = state[4]
                         joiner_score = state[5]
                         net_ok = True
