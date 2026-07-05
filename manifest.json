@@ -17,7 +17,7 @@
       "title": "Pong",
       "file": "games/mp_pong.py",
       "module": "games.mp_pong",
-      "version": 1,
+      "version": 2,
       "display_version": "1.0",
       "channel": "release",
       "mode": "multiplayer",
@@ -28,7 +28,7 @@
       "title": "Forge Fighters",
       "file": "games/forge_fighters.py",
       "module": "games.forge_fighters",
-      "version": 5,
+      "version": 6,
       "display_version": "1.0",
       "channel": "release",
       "mode": "multiplayer",
@@ -77,6 +77,16 @@
       "url": "https://raw.githubusercontent.com/pixelForge-png/pixelforge-updates/main/helpers/online_relay.py"
     },
     {
+      "id": "local_relay",
+      "title": "None",
+      "file": "helpers/local_relay.py",
+      "module": "helpers.local_relay",
+      "version": 1,
+      "display_version": "1.0",
+      "channel": "release",
+      "url": "https://raw.githubusercontent.com/pixelForge-png/pixelforge-updates/main/helpers/local_relay.py"
+    },
+    {
       "id": "ws_relay",
       "title": "None",
       "file": "helpers/ws_relay.py",
@@ -85,6 +95,16 @@
       "display_version": "1.0",
       "channel": "release",
       "url": "https://raw.githubusercontent.com/pixelForge-png/pixelforge-updates/main/helpers/ws_relay.py"
+    },
+    {
+      "id": "local_relay",
+      "title": "None",
+      "file": "helpers/local_relay.py",
+      "module": "helpers.local_relay",
+      "version": 1,
+      "display_version": "1.0",
+      "channel": "release",
+      "url": "https://raw.githubusercontent.com/pixelForge-png/pixelforge-updates/main/helpers/local_relay.py"
     }
   ],
   "system_files": [
@@ -123,7 +143,7 @@
       "title": "None",
       "file": "main.py",
       "module": "main",
-      "version": 5,
+      "version": 6,
       "display_version": "1.0",
       "channel": "release",
       "url": "https://raw.githubusercontent.com/pixelForge-png/pixelforge-updates/main/main.py"
