@@ -22,8 +22,18 @@
       "channel": "release",
       "mode": "multiplayer",
       "url": "https://raw.githubusercontent.com/pixelForge-png/pixelforge-updates/main/games/mp_pong.py"
-    }
-      
+    },
+    {
+      "id": "forge_fighters",
+      "title": "Forge Fighters",
+      "file": "games/forge_fighters.py",
+      "module": "games.forge_fighters",
+      "version": 1,
+      "display_version": "1.0",
+      "channel": "release",
+      "mode": "multiplayer",
+      "url": "https://raw.githubusercontent.com/pixelForge-png/pixelforge-updates/main/games/forge_fighters.py"
+    }      
   ],
   "helpers": [
     {
