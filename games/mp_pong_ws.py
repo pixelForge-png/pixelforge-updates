@@ -225,7 +225,7 @@ def main(oled, controls, settings, role, room_code):
 
                 last_frame = now
 
-            if time.ticks_diff(now, last_sync) > 90:
+            if time.ticks_diff(now, last_sync) > 50:
                 state = make_state(
                     ball_x,
                     ball_y,
@@ -254,7 +254,7 @@ def main(oled, controls, settings, role, room_code):
 
             joiner_y = clamp(joiner_y, 12, SCREEN_H - PADDLE_H)
 
-            if time.ticks_diff(now, last_sync) > 90:
+            if time.ticks_diff(now, last_sync) > 50:
                 reply = ws.sync(str(int(joiner_y)))
                 peer = parse_peer_message(reply)
 
