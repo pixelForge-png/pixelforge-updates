@@ -1,7 +1,7 @@
 import time
 import random
 import gc
-from helpers.ws_relay import WebSocketClient
+from helpers.mp_client import MultiplayerClient
 
 SCREEN_W = 160
 SCREEN_H = 80
@@ -155,7 +155,8 @@ def wait_screen(oled, title, line1="", line2=""):
 def main(oled, controls, settings, role, room_code):
     wait_screen(oled, "WS PONG", "CONNECTING", room_code)
 
-    ws = WebSocketClient()
+    mode = settings.get("mp_mode", "online")
+    ws = MultiplayerClient(mode)
 
     try:
         ws.connect(room_code, role)
