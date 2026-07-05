@@ -97,14 +97,14 @@
       "url": "https://raw.githubusercontent.com/pixelForge-png/pixelforge-updates/main/helpers/ws_relay.py"
     },
     {
-      "id": "local_relay",
+      "id": "mp_client",
       "title": "None",
-      "file": "helpers/local_relay.py",
-      "module": "helpers.local_relay",
+      "file": "helpers/mp_client.py",
+      "module": "helpers.mp_client",
       "version": 1,
       "display_version": "1.0",
       "channel": "release",
-      "url": "https://raw.githubusercontent.com/pixelForge-png/pixelforge-updates/main/helpers/local_relay.py"
+      "url": "https://raw.githubusercontent.com/pixelForge-png/pixelforge-updates/main/helpers/mp_client.py"
     }
   ],
   "system_files": [
