@@ -316,18 +316,35 @@ def main(oled, controls, settings, role, room_code):
                     state = parse_state(peer)
 
                     if state != None:
-                        ball_x = state[0]
-                        ball_y = state[1]
-                        ball_dx = state[2]
-                        ball_dy = state[3]
+                        real_ball_x = state[0]
+                        real_ball_y = state[1]
+                        real_ball_dx = state[2]
+                        real_ball_dy = state[3]
+                    
+                        # Smooth correction:
+                        # If the prediction is close, slide toward the host's real ball.
+                        # If it is very far off, snap back so the game does not desync forever.
+                        diff_x = real_ball_x - ball_x
+                        diff_y = real_ball_y - ball_y
+                    
+                        if diff_x > 20 or diff_x < -20 or diff_y > 20 or diff_y < -20:
+                            ball_x = real_ball_x
+                            ball_y = real_ball_y
+                        else:
+                            ball_x = ball_x + diff_x // 3
+                            ball_y = ball_y + diff_y // 3
+                    
+                        ball_dx = real_ball_dx
+                        ball_dy = real_ball_dy
+                    
                         host_y = state[4]
-
+                    
                         # Do NOT overwrite joiner_y.
                         # The joiner controls its own paddle locally.
-
+                    
                         host_score = state[6]
                         joiner_score = state[7]
-
+                    
                         net_ok = True
                         last_good_net = now
                     else:
