@@ -78,7 +78,7 @@ class WebSocketClient:
 
         # After connecting, use shorter reads.
         try:
-            self.sock.settimeout(0.03)
+            self.sock.settimeout(0.015)
         except:
             pass
 
@@ -111,7 +111,7 @@ class WebSocketClient:
 
             time.sleep(0.001)
 
-    def _read_exact(self, amount, max_ms=45):
+    def _read_exact(self, amount, max_ms=20):
         data = b""
         start = time.ticks_ms()
 
