@@ -2,8 +2,7 @@ import network
 import socket
 import time
 
-LOCAL_SSID = "PICO2697"
-LOCAL_PASSWORD = "pixelforge"
+LOCAL_SSID = "PixelForgeLocal"
 LOCAL_HOST_IP = "192.168.4.1"
 LOCAL_PORT = 5050
 
@@ -26,32 +25,37 @@ class LocalSocketClient:
             self._join_connect()
 
     def _host_connect(self):
-        # Turn off normal Wi-Fi mode so the Pico can act as the local host cleanly.
+        # Turn off normal Wi-Fi first.
         try:
             sta = network.WLAN(network.STA_IF)
             sta.active(False)
         except:
             pass
 
+        # Restart AP mode cleanly.
         ap = network.WLAN(network.AP_IF)
         ap.active(False)
-        time.sleep(0.3)
+        time.sleep(0.5)
         ap.active(True)
 
-        try:
-            ap.config(essid=LOCAL_SSID, password=LOCAL_PASSWORD)
-        except:
-            ap.config(essid=LOCAL_SSID)
+        # Open network for testing. No password.
+        ap.config(essid=LOCAL_SSID)
 
-        # Give the hotspot time to start.
-        time.sleep(2)
+        # Force host IP if supported.
+        try:
+            ap.ifconfig((LOCAL_HOST_IP, "255.255.255.0", LOCAL_HOST_IP, "8.8.8.8"))
+        except:
+            pass
+
+        # Give the hotspot time to appear.
+        time.sleep(4)
 
         self.sock = socket.socket()
         self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.sock.bind(("0.0.0.0", LOCAL_PORT))
         self.sock.listen(1)
 
-        # This waits here until the joiner connects.
+        # Wait until joiner connects.
         self.conn, addr = self.sock.accept()
 
         try:
@@ -60,7 +64,7 @@ class LocalSocketClient:
             pass
 
     def _join_connect(self):
-        # Turn off AP mode on the joiner.
+        # Turn off AP mode on joiner.
         try:
             ap = network.WLAN(network.AP_IF)
             ap.active(False)
@@ -69,10 +73,39 @@ class LocalSocketClient:
 
         wlan = network.WLAN(network.STA_IF)
 
-        # IMPORTANT:
-        # Force disconnect from home Wi-Fi first.
+        # Restart station mode cleanly.
+        wlan.active(False)
+        time.sleep(0.5)
         wlan.active(True)
+        time.sleep(0.5)
 
+        # Scan first so we know the host network exists.
+        found = False
+        scan_start = time.ticks_ms()
+
+        while time.ticks_diff(time.ticks_ms(), scan_start) < 12000:
+            try:
+                networks = wlan.scan()
+
+                for net in networks:
+                    ssid = net[0].decode()
+
+                    if ssid == LOCAL_SSID:
+                        found = True
+                        break
+
+                if found:
+                    break
+
+            except:
+                pass
+
+            time.sleep(0.5)
+
+        if not found:
+            raise Exception("no local ap")
+
+        # Connect to open local network.
         try:
             wlan.disconnect()
         except:
@@ -80,7 +113,7 @@ class LocalSocketClient:
 
         time.sleep(0.5)
 
-        wlan.connect(LOCAL_SSID, LOCAL_PASSWORD)
+        wlan.connect(LOCAL_SSID)
 
         start = time.ticks_ms()
 
@@ -90,8 +123,8 @@ class LocalSocketClient:
 
             time.sleep(0.2)
 
-        # Give the network a moment after connecting.
-        time.sleep(0.5)
+        # Give DHCP a moment.
+        time.sleep(1)
 
         self.conn = socket.socket()
 
