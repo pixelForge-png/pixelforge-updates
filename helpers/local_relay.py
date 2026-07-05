@@ -2,7 +2,7 @@ import network
 import socket
 import time
 
-LOCAL_SSID = "PixelForgeLocal"
+LOCAL_SSID = "PICO2697"
 LOCAL_PASSWORD = "pixelforge"
 LOCAL_HOST_IP = "192.168.4.1"
 LOCAL_PORT = 5050
