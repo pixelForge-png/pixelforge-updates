@@ -4,7 +4,7 @@ import ubinascii
 import urandom
 import time
 
-RELAY_HOST = "pixelforge-relay-server.onrender.com"
+RELAY_HOST = "pixelforge-relay-server-1.onrender.com"
 RELAY_PORT = 443
 
 def _b64(data):
