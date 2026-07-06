@@ -106,6 +106,16 @@ def wait_screen(oled, title, line1="", line2=""):
     oled.show()
 
 
+def wait_button_release(controls):
+    while (
+        controls["green"]() or
+        controls["yellow"]() or
+        controls["blue"]() or
+        controls["red"]()
+    ):
+        time.sleep(0.02)
+
+
 def parse_int(value, default=0):
     try:
         return int(value)
@@ -138,6 +148,29 @@ def get_character(char_index):
     return CHARACTERS[char_index]
 
 
+def draw_preview_fighter(oled, x, y, char_index):
+    if char_index == 0:
+        # Kael: balanced sword shape
+        oled.fill_rect(x, y, 8, 13, WHITE)
+        oled.fill_rect(x + 2, y - 4, 4, 4, WHITE)
+        oled.hline(x + 8, y + 5, 8, WHITE)
+
+    elif char_index == 1:
+        # Nyra: slimmer/faster
+        oled.fill_rect(x + 1, y, 6, 13, WHITE)
+        oled.fill_rect(x + 2, y - 4, 4, 4, WHITE)
+        oled.hline(x + 7, y + 5, 10, WHITE)
+        oled.pixel(x - 1, y + 2, WHITE)
+        oled.pixel(x - 2, y + 3, WHITE)
+
+    else:
+        # Brugo: wider/heavier
+        oled.fill_rect(x - 1, y, 10, 13, WHITE)
+        oled.fill_rect(x + 1, y - 4, 6, 4, WHITE)
+        oled.hline(x + 9, y + 6, 6, WHITE)
+        oled.vline(x - 2, y + 3, 7, WHITE)
+
+
 def character_select(oled, controls, role):
     index = 0
     last_move = time.ticks_ms()
@@ -146,26 +179,25 @@ def character_select(oled, controls, role):
         char = get_character(index)
 
         oled.fill(BLACK)
-        center_text("CHOOSE FIGHTER", 3, CYAN)
+        center_text(oled, "CHOOSE FIGHTER", 3, CYAN)
 
         if role == "host":
-            center_text("PLAYER 1", 15, WHITE)
+            center_text(oled, "PLAYER 1", 15, WHITE)
         else:
-            center_text("PLAYER 2", 15, WHITE)
+            center_text(oled, "PLAYER 2", 15, WHITE)
 
         oled.text("<", 3, 37, YELLOW)
         oled.text(">", 150, 37, YELLOW)
 
-        center_text(char["name"], 30, WHITE)
-        center_text(char["title"], 43, CYAN)
+        center_text(oled, char["name"], 30, WHITE)
+        center_text(oled, char["title"], 43, CYAN)
 
         stat_line = "SPD" + str(char["speed"]) + " JMP" + str(abs(char["jump"]))
-        center_text(stat_line, 56, WHITE)
+        center_text(oled, stat_line, 56, WHITE)
 
         oled.text("G=Pick", 2, 70, WHITE)
         oled.text("Y=Back", 104, 70, GRAY)
 
-        # Tiny preview fighter
         draw_preview_fighter(oled, 75, 24, index)
 
         oled.show()
@@ -195,40 +227,6 @@ def character_select(oled, controls, role):
             return None
 
         time.sleep(0.03)
-
-
-def wait_button_release(controls):
-    while (
-        controls["green"]() or
-        controls["yellow"]() or
-        controls["blue"]() or
-        controls["red"]()
-    ):
-        time.sleep(0.02)
-
-
-def draw_preview_fighter(oled, x, y, char_index):
-    # Simple character preview. More detailed sprites come later.
-    if char_index == 0:
-        # Kael: balanced sword shape
-        oled.fill_rect(x, y, 8, 13, WHITE)
-        oled.fill_rect(x + 2, y - 4, 4, 4, WHITE)
-        oled.hline(x + 8, y + 5, 8, WHITE)
-
-    elif char_index == 1:
-        # Nyra: slimmer/faster
-        oled.fill_rect(x + 1, y, 6, 13, WHITE)
-        oled.fill_rect(x + 2, y - 4, 4, 4, WHITE)
-        oled.hline(x + 7, y + 5, 10, WHITE)
-        oled.pixel(x - 1, y + 2, WHITE)
-        oled.pixel(x - 2, y + 3, WHITE)
-
-    else:
-        # Brugo: wider/heavier
-        oled.fill_rect(x - 1, y, 10, 13, WHITE)
-        oled.fill_rect(x + 1, y - 4, 6, 4, WHITE)
-        oled.hline(x + 9, y + 6, 6, WHITE)
-        oled.vline(x - 2, y + 3, 7, WHITE)
 
 
 def make_player(x, y, facing, char_index):
@@ -368,15 +366,7 @@ def apply_player_input(player, left, right, up):
 def update_physics(player, player_num):
     old_y = player[PY]
 
-    char = get_character(player[PCHAR])
-
-    # Heavier characters fall a little more firmly.
-    gravity = GRAVITY
-
-    if char["weight"] >= 2:
-        gravity = 1
-
-    player[PVY] += gravity
+    player[PVY] += GRAVITY
 
     if player[PVY] > MAX_FALL:
         player[PVY] = MAX_FALL
@@ -386,7 +376,6 @@ def update_physics(player, player_num):
 
     player[PX] = clamp(player[PX], -25, SCREEN_W + 25)
 
-    # Platform collision
     player_bottom_old = old_y + PLAYER_H
     player_bottom_new = player[PY] + PLAYER_H
 
@@ -415,7 +404,6 @@ def update_physics(player, player_num):
     else:
         player[PONGROUND] = 0
 
-    # Fall off map
     if player[PY] > SCREEN_H + 20:
         player[PFALLS] += 1
         respawn_player(player, player_num)
@@ -463,6 +451,72 @@ def predict_remote_physics(player):
         player[PONGROUND] = 0
 
 
+def draw_kael(oled, x, y, facing, action):
+    if action == ACTION_RUN:
+        leg_offset = (time.ticks_ms() // 120) % 2
+    else:
+        leg_offset = 0
+
+    oled.fill_rect(x, y, 7, 12, WHITE)
+    oled.fill_rect(x + 2, y - 3, 3, 3, WHITE)
+
+    oled.vline(x + 1, y + 12, 3 + leg_offset, WHITE)
+    oled.vline(x + 5, y + 12, 4 - leg_offset, WHITE)
+
+    if facing >= 0:
+        oled.hline(x + 7, y + 5, 7, WHITE)
+    else:
+        oled.hline(x - 7, y + 5, 7, WHITE)
+
+
+def draw_nyra(oled, x, y, facing, action):
+    if action == ACTION_RUN:
+        leg_offset = (time.ticks_ms() // 90) % 2
+    else:
+        leg_offset = 0
+
+    oled.fill_rect(x + 1, y, 5, 12, WHITE)
+    oled.fill_rect(x + 2, y - 3, 3, 3, WHITE)
+
+    if action == ACTION_RUN:
+        if facing >= 0:
+            oled.pixel(x - 2, y + 4, WHITE)
+            oled.pixel(x - 3, y + 7, WHITE)
+        else:
+            oled.pixel(x + 8, y + 4, WHITE)
+            oled.pixel(x + 9, y + 7, WHITE)
+
+    oled.vline(x + 2, y + 12, 3 + leg_offset, WHITE)
+    oled.vline(x + 5, y + 12, 4 - leg_offset, WHITE)
+
+    if facing >= 0:
+        oled.hline(x + 6, y + 5, 9, WHITE)
+    else:
+        oled.hline(x - 9, y + 5, 9, WHITE)
+
+
+def draw_brugo(oled, x, y, facing, action):
+    if action == ACTION_RUN:
+        leg_offset = (time.ticks_ms() // 170) % 2
+    else:
+        leg_offset = 0
+
+    oled.fill_rect(x - 1, y, 9, 12, WHITE)
+    oled.fill_rect(x + 1, y - 4, 5, 4, WHITE)
+
+    oled.hline(x - 2, y + 2, 11, WHITE)
+
+    oled.vline(x + 1, y + 12, 4 + leg_offset, WHITE)
+    oled.vline(x + 6, y + 12, 5 - leg_offset, WHITE)
+
+    if facing >= 0:
+        oled.hline(x + 8, y + 6, 6, WHITE)
+        oled.vline(x + 13, y + 4, 5, WHITE)
+    else:
+        oled.hline(x - 6, y + 6, 6, WHITE)
+        oled.vline(x - 6, y + 4, 5, WHITE)
+
+
 def draw_player(oled, player, label):
     x = int(player[PX])
     y = int(player[PY])
@@ -475,7 +529,6 @@ def draw_player(oled, player, label):
 
     char = get_character(char_index)
 
-    # Different simple shapes for each character.
     if char["id"] == "kael":
         draw_kael(oled, x, y, facing, action)
 
@@ -486,83 +539,6 @@ def draw_player(oled, player, label):
         draw_brugo(oled, x, y, facing, action)
 
     oled.text(label, x, y - 12, WHITE)
-
-
-def draw_kael(oled, x, y, facing, action):
-    # Balanced swordsman
-    if action == ACTION_RUN:
-        leg_offset = (time.ticks_ms() // 120) % 2
-    else:
-        leg_offset = 0
-
-    oled.fill_rect(x, y, 7, 12, WHITE)
-    oled.fill_rect(x + 2, y - 3, 3, 3, WHITE)
-
-    # legs
-    oled.vline(x + 1, y + 12, 3 + leg_offset, WHITE)
-    oled.vline(x + 5, y + 12, 4 - leg_offset, WHITE)
-
-    # sword
-    if facing >= 0:
-        oled.hline(x + 7, y + 5, 7, WHITE)
-    else:
-        oled.hline(x - 7, y + 5, 7, WHITE)
-
-
-def draw_nyra(oled, x, y, facing, action):
-    # Slim fast duelist
-    if action == ACTION_RUN:
-        leg_offset = (time.ticks_ms() // 90) % 2
-    else:
-        leg_offset = 0
-
-    oled.fill_rect(x + 1, y, 5, 12, WHITE)
-    oled.fill_rect(x + 2, y - 3, 3, 3, WHITE)
-
-    # fast trailing pixels
-    if action == ACTION_RUN:
-        if facing >= 0:
-            oled.pixel(x - 2, y + 4, WHITE)
-            oled.pixel(x - 3, y + 7, WHITE)
-        else:
-            oled.pixel(x + 8, y + 4, WHITE)
-            oled.pixel(x + 9, y + 7, WHITE)
-
-    # legs
-    oled.vline(x + 2, y + 12, 3 + leg_offset, WHITE)
-    oled.vline(x + 5, y + 12, 4 - leg_offset, WHITE)
-
-    # longer thin sword
-    if facing >= 0:
-        oled.hline(x + 6, y + 5, 9, WHITE)
-    else:
-        oled.hline(x - 9, y + 5, 9, WHITE)
-
-
-def draw_brugo(oled, x, y, facing, action):
-    # Heavy warrior
-    if action == ACTION_RUN:
-        leg_offset = (time.ticks_ms() // 170) % 2
-    else:
-        leg_offset = 0
-
-    oled.fill_rect(x - 1, y, 9, 12, WHITE)
-    oled.fill_rect(x + 1, y - 4, 5, 4, WHITE)
-
-    # heavy shoulders
-    oled.hline(x - 2, y + 2, 11, WHITE)
-
-    # legs
-    oled.vline(x + 1, y + 12, 4 + leg_offset, WHITE)
-    oled.vline(x + 6, y + 12, 5 - leg_offset, WHITE)
-
-    # short heavy weapon
-    if facing >= 0:
-        oled.hline(x + 8, y + 6, 6, WHITE)
-        oled.vline(x + 13, y + 4, 5, WHITE)
-    else:
-        oled.hline(x - 6, y + 6, 6, WHITE)
-        oled.vline(x - 6, y + 4, 5, WHITE)
 
 
 def draw_game(oled, role, p1, p2, net_ok):
@@ -587,7 +563,6 @@ def draw_game(oled, role, p1, p2, net_ok):
     else:
         oled.text("!", 76, 2, WHITE)
 
-    # Platform
     oled.fill_rect(PLATFORM_X, PLATFORM_Y, PLATFORM_W, PLATFORM_H, WHITE)
     oled.vline(PLATFORM_X, PLATFORM_Y, 6, WHITE)
     oled.vline(PLATFORM_X + PLATFORM_W, PLATFORM_Y, 6, WHITE)
@@ -615,8 +590,8 @@ def main(oled, controls, settings, role, room_code):
     except Exception as e:
         print("FF CONNECT ERROR:", e)
         oled.fill(BLACK)
-        center_text(oled, "CONNECT FAIL", 14)
-        center_text(oled, str(e)[:18], 38)
+        center_text(oled, "CONNECT FAIL", 14, WHITE)
+        center_text(oled, str(e)[:18], 38, WHITE)
         oled.show()
         time.sleep(5)
         return
@@ -648,13 +623,11 @@ def main(oled, controls, settings, role, room_code):
 
         now = time.ticks_ms()
 
-        # HOST: controls Player 1 locally
         if role == "host":
             if time.ticks_diff(now, last_frame) > FRAME_MS:
                 apply_player_input(p1, left, right, up)
                 update_physics(p1, 1)
 
-                # Predict remote player
                 predict_remote_physics(p2)
 
                 last_frame = now
@@ -675,7 +648,6 @@ def main(oled, controls, settings, role, room_code):
 
                 last_sync = now
 
-        # JOINER: controls Player 2 locally
         else:
             if time.ticks_diff(now, last_frame) > FRAME_MS:
                 predict_remote_physics(p1)
