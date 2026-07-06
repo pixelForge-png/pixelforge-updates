@@ -81,7 +81,7 @@
       "title": "None",
       "file": "helpers/local_relay.py",
       "module": "helpers.local_relay",
-      "version": 7,
+      "version": 8,
       "display_version": "1.0",
       "channel": "release",
       "url": "https://raw.githubusercontent.com/pixelForge-png/pixelforge-updates/main/helpers/local_relay.py"
