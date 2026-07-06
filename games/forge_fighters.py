@@ -9,7 +9,6 @@ BLACK = 0
 WHITE = 65535
 GRAY = 33808
 
-# If your colors are weird, these are just labels.
 P1_COLOR = WHITE
 P2_COLOR = WHITE
 
@@ -21,7 +20,7 @@ GRAVITY = 1
 JUMP_POWER = -8
 MAX_FALL = 7
 
-SYNC_MS = 70
+SYNC_MS = 60
 FRAME_MS = 35
 
 # Stone Bridge map
@@ -38,12 +37,15 @@ RESPAWN_Y = 35
 def clamp(value, low, high):
     if value < low:
         return low
+
     if value > high:
         return high
+
     return value
 
 
 def center_text(oled, text, y, color=WHITE):
+    text = str(text)
     x = (SCREEN_W - len(text) * 8) // 2
     oled.text(text, x, y, color)
 
@@ -77,7 +79,14 @@ def parse_peer_message(msg):
 
     return parts[2]
 
+
+def make_player(x, y, facing):
+    # x, y, vx, vy, facing, on_ground, falls
+    return [x, y, 0, 0, facing, 0, 0]
+
+
 def make_one_player_state(player):
+    # x,y,vx,vy,facing,on_ground,falls
     return (
         str(int(player[0])) + "," +
         str(int(player[1])) + "," +
@@ -110,62 +119,8 @@ def parse_one_player_state(data, old_player):
         return old_player
 
 
-def make_state(p1, p2):
-    # p1 and p2:
-    # [x, y, vx, vy, facing, on_ground, falls]
-    return (
-        str(int(p1[0])) + "," +
-        str(int(p1[1])) + "," +
-        str(int(p1[2])) + "," +
-        str(int(p1[3])) + "," +
-        str(int(p1[4])) + "," +
-        str(int(p1[5])) + "," +
-        str(int(p1[6])) + "," +
-
-        str(int(p2[0])) + "," +
-        str(int(p2[1])) + "," +
-        str(int(p2[2])) + "," +
-        str(int(p2[3])) + "," +
-        str(int(p2[4])) + "," +
-        str(int(p2[5])) + "," +
-        str(int(p2[6]))
-    )
-
-
-def parse_state(data):
-    try:
-        parts = data.split(",")
-
-        if len(parts) < 14:
-            return None
-
-        p1 = [
-            parse_int(parts[0]),
-            parse_int(parts[1]),
-            parse_int(parts[2]),
-            parse_int(parts[3]),
-            parse_int(parts[4]),
-            parse_int(parts[5]),
-            parse_int(parts[6])
-        ]
-
-        p2 = [
-            parse_int(parts[7]),
-            parse_int(parts[8]),
-            parse_int(parts[9]),
-            parse_int(parts[10]),
-            parse_int(parts[11]),
-            parse_int(parts[12]),
-            parse_int(parts[13])
-        ]
-
-        return p1, p2
-
-    except:
-        return None
-
 def smooth_correct_player(local_player, real_player):
-    # Smoothly correct x/y so the player does not snap.
+    # Use this later if we need smoother remote players.
     diff_x = real_player[0] - local_player[0]
     diff_y = real_player[1] - local_player[1]
 
@@ -176,17 +131,11 @@ def smooth_correct_player(local_player, real_player):
         local_player[0] = local_player[0] + diff_x // 3
         local_player[1] = local_player[1] + diff_y // 3
 
-    # These should match the host.
     local_player[2] = real_player[2]
     local_player[3] = real_player[3]
     local_player[4] = real_player[4]
     local_player[5] = real_player[5]
     local_player[6] = real_player[6]
-
-
-def make_player(x, y, facing):
-    # x, y, vx, vy, facing, on_ground, falls
-    return [x, y, 0, 0, facing, 0, 0]
 
 
 def respawn_player(player, player_num):
@@ -207,9 +156,11 @@ def apply_player_input(player, left, right, up):
     if left:
         player[2] = -MOVE_SPEED
         player[4] = -1
+
     elif right:
         player[2] = MOVE_SPEED
         player[4] = 1
+
     else:
         player[2] = 0
 
@@ -221,20 +172,20 @@ def apply_player_input(player, left, right, up):
 def update_physics(player, player_num):
     old_y = player[1]
 
-    # gravity
+    # Gravity
     player[3] += GRAVITY
 
     if player[3] > MAX_FALL:
         player[3] = MAX_FALL
 
-    # move
+    # Move
     player[0] += player[2]
     player[1] += player[3]
 
-    # screen side bounds
-    player[0] = clamp(player[0], -20, SCREEN_W + 20)
+    # Let players go slightly off screen before falling.
+    player[0] = clamp(player[0], -25, SCREEN_W + 25)
 
-    # platform collision
+    # Platform collision
     player_bottom_old = old_y + PLAYER_H
     player_bottom_new = player[1] + PLAYER_H
 
@@ -263,7 +214,7 @@ def update_physics(player, player_num):
     else:
         player[5] = 0
 
-    # fall off map
+    # Fall off map
     if player[1] > SCREEN_H + 20:
         player[6] += 1
         respawn_player(player, player_num)
@@ -274,47 +225,53 @@ def draw_player(oled, player, color, label):
     y = int(player[1])
     facing = int(player[4])
 
-    # body
+    # Do not draw if super far offscreen.
+    if x < -30 or x > SCREEN_W + 30:
+        return
+
+    # Body
     oled.fill_rect(x, y, PLAYER_W, PLAYER_H, color)
 
-    # head
+    # Head
     oled.fill_rect(x + 2, y - 3, 3, 3, color)
 
-    # tiny sword/face direction marker
+    # Tiny sword / facing marker
     if facing >= 0:
         oled.hline(x + PLAYER_W, y + 5, 5, color)
     else:
         oled.hline(x - 5, y + 5, 5, color)
 
-    # label
+    # Label
     oled.text(label, x, y - 11, color)
 
 
 def draw_game(oled, role, p1, p2, net_ok):
     oled.fill(BLACK)
 
-    # title/status
+    # Role marker
     if role == "host":
         oled.text("H", 2, 2, WHITE)
     else:
         oled.text("J", 2, 2, WHITE)
 
-    oled.text("P1 falls:" + str(p1[6]), 18, 2, WHITE)
-    oled.text("P2:" + str(p2[6]), 110, 2, WHITE)
+    # Fall counters
+    oled.text("P1:" + str(p1[6]), 24, 2, WHITE)
+    oled.text("P2:" + str(p2[6]), 112, 2, WHITE)
 
+    # Network marker
     if net_ok:
         oled.pixel(78, 2, WHITE)
     else:
         oled.text("!", 76, 2, WHITE)
 
-    # map
+    # Platform
     oled.fill_rect(PLATFORM_X, PLATFORM_Y, PLATFORM_W, PLATFORM_H, WHITE)
 
-    # small platform ends
+    # Platform ends
     oled.vline(PLATFORM_X, PLATFORM_Y, 6, WHITE)
     oled.vline(PLATFORM_X + PLATFORM_W, PLATFORM_Y, 6, WHITE)
 
-    # players
+    # Players
     draw_player(oled, p1, P1_COLOR, "1")
     draw_player(oled, p2, P2_COLOR, "2")
 
@@ -322,60 +279,25 @@ def draw_game(oled, role, p1, p2, net_ok):
 
 
 def main(oled, controls, settings, role, room_code):
-    wait_screen(oled, "FORGE FIGHTERS", "CONNECTING", room_code)
-
     mp_mode = settings.get("mp_mode", "online")
-    ws = MultiplayerClient(mode)
 
-            # -------------------------
-        # HOST: controls Player 1 locally
-        # -------------------------
-    if role == "host":
-        if time.ticks_diff(now, last_frame) > FRAME_MS:
-            apply_player_input(p1, left, right, up)
-            update_physics(p1, 1)
-            last_frame = now
+    wait_screen(oled, "FORGE FIGHTERS", "CONNECTING", mp_mode.upper())
 
-        if time.ticks_diff(now, last_sync) > SYNC_MS:
-            packet = make_one_player_state(p1)
+    ws = MultiplayerClient(mp_mode)
 
-            reply = ws.sync(packet)
-            peer = parse_peer_message(reply)
+    try:
+        ws.connect(room_code, role)
+    except Exception as e:
+        print("FF CONNECT ERROR:", e)
+        oled.fill(BLACK)
+        center_text(oled, "CONNECT FAIL", 14)
+        center_text(oled, str(e)[:18], 38)
+        oled.show()
+        time.sleep(5)
+        return
 
-            if peer != "":
-                p2 = parse_one_player_state(peer, p2)
-                net_ok = True
-                last_good_net = now
-            else:
-                net_ok = False
-
-            last_sync = now
-
-        # -------------------------
-        # JOINER: controls Player 2 locally
-        # -------------------------
-        else:
-            if time.ticks_diff(now, last_frame) > FRAME_MS:
-                apply_player_input(p2, left, right, up)
-                update_physics(p2, 2)
-                last_frame = now
-
-            if time.ticks_diff(now, last_sync) > SYNC_MS:
-                packet = make_one_player_state(p2)
-
-                reply = ws.sync(packet)
-                peer = parse_peer_message(reply)
-
-                if peer != "":
-                    p1 = parse_one_player_state(peer, p1)
-                    net_ok = True
-                    last_good_net = now
-                else:
-                    net_ok = False
-
-                last_sync = now
-
-    # p1 = host, p2 = joiner
+    # p1 = host player
+    # p2 = joiner player
     p1 = make_player(RESPAWN_1_X, RESPAWN_Y, 1)
     p2 = make_player(RESPAWN_2_X, RESPAWN_Y, -1)
 
@@ -400,26 +322,22 @@ def main(oled, controls, settings, role, room_code):
         now = time.ticks_ms()
 
         # -------------------------
-        # HOST: real game simulation
+        # HOST: controls Player 1 locally
         # -------------------------
         if role == "host":
             if time.ticks_diff(now, last_frame) > FRAME_MS:
                 apply_player_input(p1, left, right, up)
-                apply_player_input(p2, j_left, j_right, j_up)
-
                 update_physics(p1, 1)
-                update_physics(p2, 2)
-
                 last_frame = now
 
             if time.ticks_diff(now, last_sync) > SYNC_MS:
-                state = make_state(p1, p2)
+                packet = make_one_player_state(p1)
 
-                reply = ws.sync(state)
+                reply = ws.sync(packet)
                 peer = parse_peer_message(reply)
 
                 if peer != "":
-                    j_left, j_right, j_up = parse_input_packet(peer)
+                    p2 = parse_one_player_state(peer, p2)
                     net_ok = True
                     last_good_net = now
                 else:
@@ -428,45 +346,27 @@ def main(oled, controls, settings, role, room_code):
                 last_sync = now
 
         # -------------------------
-        # JOINER: send input, receive state
-        # -------------------------
-        # -------------------------
-        # JOINER: local prediction + host correction
+        # JOINER: controls Player 2 locally
         # -------------------------
         else:
-            # Move Player 2 locally immediately.
-            # This makes the joiner's own sprite feel smooth.
             if time.ticks_diff(now, last_frame) > FRAME_MS:
                 apply_player_input(p2, left, right, up)
                 update_physics(p2, 2)
                 last_frame = now
-        
-            # Send input to host and receive real state.
+
             if time.ticks_diff(now, last_sync) > SYNC_MS:
-                packet = make_input_packet(left, right, up)
-        
+                packet = make_one_player_state(p2)
+
                 reply = ws.sync(packet)
                 peer = parse_peer_message(reply)
-        
+
                 if peer != "":
-                    parsed = parse_state(peer)
-        
-                    if parsed != None:
-                        real_p1, real_p2 = parsed
-        
-                        # Player 1 is host-controlled, so use host state directly.
-                        p1 = real_p1
-        
-                        # Player 2 is controlled locally, so smooth-correct it.
-                        smooth_correct_player(p2, real_p2)
-        
-                        net_ok = True
-                        last_good_net = now
-                    else:
-                        net_ok = False
+                    p1 = parse_one_player_state(peer, p1)
+                    net_ok = True
+                    last_good_net = now
                 else:
                     net_ok = False
-        
+
                 last_sync = now
 
         if time.ticks_diff(now, last_good_net) > 1000:
