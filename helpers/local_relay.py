@@ -26,25 +26,28 @@ class LocalSocketClient:
             self._join_connect()
 
     def _host_connect(self):
+        # Fully shut down normal Wi-Fi.
         try:
             sta = network.WLAN(network.STA_IF)
+            sta.disconnect()
             sta.active(False)
         except:
             pass
 
+        time.sleep(1)
+
         ap = network.WLAN(network.AP_IF)
 
+        # Fully restart AP mode.
         try:
             ap.active(False)
-            time.sleep(1)
         except:
             pass
 
-        ap.active(True)
         time.sleep(1)
 
-        # Try to make a named WPA2 network.
-        # If the Pico ignores the name, it may still show as PICO####.
+        # IMPORTANT:
+        # Set name/password BEFORE active(True).
         try:
             ap.config(essid=LOCAL_SSID, password=LOCAL_PASSWORD)
         except:
@@ -58,13 +61,17 @@ class LocalSocketClient:
         except:
             pass
 
-        time.sleep(5)
+        ap.active(True)
+
+        # Give the hotspot time to appear.
+        time.sleep(6)
 
         self.sock = socket.socket()
         self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.sock.bind(("0.0.0.0", LOCAL_PORT))
         self.sock.listen(1)
 
+        # Wait for joiner.
         self.conn, addr = self.sock.accept()
 
         try:
@@ -73,6 +80,7 @@ class LocalSocketClient:
             pass
 
     def _join_connect(self):
+        # Turn off AP mode on joiner.
         try:
             ap = network.WLAN(network.AP_IF)
             ap.active(False)
@@ -80,6 +88,12 @@ class LocalSocketClient:
             pass
 
         wlan = network.WLAN(network.STA_IF)
+
+        # Fully restart station mode.
+        try:
+            wlan.disconnect()
+        except:
+            pass
 
         wlan.active(False)
         time.sleep(1)
@@ -99,13 +113,7 @@ class LocalSocketClient:
                     except:
                         ssid = str(net[0])
 
-                    ssid_upper = ssid.upper()
-
                     if ssid == LOCAL_SSID:
-                        target_ssid = ssid
-                        break
-
-                    if ssid_upper.startswith("PICO"):
                         target_ssid = ssid
                         break
 
@@ -118,7 +126,7 @@ class LocalSocketClient:
             time.sleep(0.5)
 
         if target_ssid == None:
-            raise Exception("no local ap")
+            raise Exception("no PixelForge AP")
 
         try:
             wlan.disconnect()
@@ -127,34 +135,15 @@ class LocalSocketClient:
 
         time.sleep(0.5)
 
-        # Try password first.
         wlan.connect(target_ssid, LOCAL_PASSWORD)
 
         start = time.ticks_ms()
 
         while not wlan.isconnected():
-            if time.ticks_diff(time.ticks_ms(), start) > 12000:
-                break
+            if time.ticks_diff(time.ticks_ms(), start) > 15000:
+                raise Exception("wifi 110")
 
             time.sleep(0.2)
-
-        # If password failed, try open network.
-        if not wlan.isconnected():
-            try:
-                wlan.disconnect()
-            except:
-                pass
-
-            time.sleep(0.5)
-            wlan.connect(target_ssid)
-
-            start = time.ticks_ms()
-
-            while not wlan.isconnected():
-                if time.ticks_diff(time.ticks_ms(), start) > 12000:
-                    raise Exception("wifi 110 " + target_ssid[:8])
-
-                time.sleep(0.2)
 
         time.sleep(1)
 
