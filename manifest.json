@@ -10,6 +10,7 @@
       "display_version": "1.0",
       "channel": "release",
       "mode": "singleplayer",
+      "network": "None",
       "url": "https://raw.githubusercontent.com/pixelForge-png/pixelforge-updates/main/games/pixel_swarm.py"
     },
     {
@@ -17,10 +18,11 @@
       "title": "Pong",
       "file": "games/mp_pong.py",
       "module": "games.mp_pong",
-      "version": 2,
+      "version": 3,
       "display_version": "1.0",
       "channel": "release",
       "mode": "multiplayer",
+      "network": "local",
       "url": "https://raw.githubusercontent.com/pixelForge-png/pixelforge-updates/main/games/mp_pong.py"
     },
     {
@@ -32,6 +34,7 @@
       "display_version": "1.0",
       "channel": "release",
       "mode": "multiplayer",
+      "network": "local",
       "url": "https://raw.githubusercontent.com/pixelForge-png/pixelforge-updates/main/games/forge_fighters.py"
     }      
   ],
@@ -133,7 +136,7 @@
         "title": "None",
         "file": "update_manager.py",
         "module": "update_manager",
-        "version": 8,
+        "version": 9,
         "display_version": "1.0",
         "channel": "release",
         "url": "https://raw.githubusercontent.com/pixelForge-png/pixelforge-updates/main/systems/update_manager.py"
@@ -143,7 +146,7 @@
       "title": "None",
       "file": "main.py",
       "module": "main",
-      "version": 6,
+      "version": 7,
       "display_version": "1.0",
       "channel": "release",
       "url": "https://raw.githubusercontent.com/pixelForge-png/pixelforge-updates/main/main.py"
