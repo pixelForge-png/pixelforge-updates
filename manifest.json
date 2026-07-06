@@ -30,7 +30,7 @@
       "title": "Forge Fighters",
       "file": "games/forge_fighters.py",
       "module": "games.forge_fighters",
-      "version": 13,
+      "version": 14,
       "display_version": "1.0",
       "channel": "release",
       "mode": "multiplayer",
@@ -108,6 +108,16 @@
       "display_version": "1.0",
       "channel": "release",
       "url": "https://raw.githubusercontent.com/pixelForge-png/pixelforge-updates/main/helpers/mp_client.py"
+    },
+    {
+      "id": "forge_sprites",
+      "title": "None",
+      "file": "helpers/forge_sprites.py",
+      "module": "helpers.forge_sprites",
+      "version": 1,
+      "display_version": "1.0",
+      "channel": "release",
+      "url": "https://raw.githubusercontent.com/pixelForge-png/pixelforge-updates/main/helpers/forge_sprites.py"
     }
   ],
   "system_files": [
