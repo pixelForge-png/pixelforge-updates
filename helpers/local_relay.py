@@ -12,8 +12,7 @@ class LocalSocketClient:
     def __init__(self):
         self.role = None
         self.sock = None
-        self.conn = None
-        self.buffer = b""
+        self.peer_addr = None
         self.peer_data = ""
         self.message_id = 0
 
@@ -38,7 +37,6 @@ class LocalSocketClient:
 
         ap = network.WLAN(network.AP_IF)
 
-        # Fully restart AP mode.
         try:
             ap.active(False)
         except:
@@ -46,8 +44,7 @@ class LocalSocketClient:
 
         time.sleep(1)
 
-        # IMPORTANT:
-        # Set name/password BEFORE active(True).
+        # Set AP settings before turning it on.
         try:
             ap.config(essid=LOCAL_SSID, password=LOCAL_PASSWORD)
         except:
@@ -63,19 +60,43 @@ class LocalSocketClient:
 
         ap.active(True)
 
-        # Give the hotspot time to appear.
         time.sleep(6)
 
-        self.sock = socket.socket()
-        self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.sock.bind(("0.0.0.0", LOCAL_PORT))
-        self.sock.listen(1)
-
-        # Wait for joiner.
-        self.conn, addr = self.sock.accept()
 
         try:
-            self.conn.settimeout(0.02)
+            self.sock.settimeout(0.05)
+        except:
+            pass
+
+        # Wait for joiner hello.
+        start = time.ticks_ms()
+
+        while True:
+            try:
+                data, addr = self.sock.recvfrom(128)
+
+                try:
+                    text = data.decode()
+                except:
+                    text = ""
+
+                if text.startswith("HELLO"):
+                    self.peer_addr = addr
+                    self.sock.sendto(b"WELCOME", self.peer_addr)
+                    break
+
+            except:
+                pass
+
+            if time.ticks_diff(time.ticks_ms(), start) > 30000:
+                raise Exception("no joiner")
+
+            time.sleep(0.05)
+
+        try:
+            self.sock.settimeout(0)
         except:
             pass
 
@@ -89,7 +110,6 @@ class LocalSocketClient:
 
         wlan = network.WLAN(network.STA_IF)
 
-        # Fully restart station mode.
         try:
             wlan.disconnect()
         except:
@@ -100,6 +120,7 @@ class LocalSocketClient:
         wlan.active(True)
         time.sleep(1)
 
+        # Find PixelForgeLocal.
         target_ssid = None
         scan_start = time.ticks_ms()
 
@@ -126,7 +147,7 @@ class LocalSocketClient:
             time.sleep(0.5)
 
         if target_ssid == None:
-            raise Exception("no PixelForge AP")
+            raise Exception("no local ap")
 
         try:
             wlan.disconnect()
@@ -147,91 +168,97 @@ class LocalSocketClient:
 
         time.sleep(1)
 
-        self.conn = socket.socket()
+        self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
         try:
-            self.conn.settimeout(8)
+            self.sock.settimeout(0.05)
         except:
             pass
 
-        self.conn.connect((LOCAL_HOST_IP, LOCAL_PORT))
+        self.peer_addr = (LOCAL_HOST_IP, LOCAL_PORT)
 
-        try:
-            self.conn.settimeout(0.02)
-        except:
-            pass
-
-    def _send_line(self, text):
-        if self.conn == None:
-            return False
-
-        try:
-            self.conn.send((text + "\n").encode())
-            return True
-        except:
-            return False
-
-    def _read_lines(self, max_ms=20):
+        # Send hello until host answers.
         start = time.ticks_ms()
 
-        while time.ticks_diff(time.ticks_ms(), start) < max_ms:
+        while True:
             try:
-                chunk = self.conn.recv(64)
+                self.sock.sendto(b"HELLO", self.peer_addr)
 
-                if chunk == None or len(chunk) == 0:
-                    return
+                data, addr = self.sock.recvfrom(128)
 
-                self.buffer += chunk
+                try:
+                    text = data.decode()
+                except:
+                    text = ""
 
-                while b"\n" in self.buffer:
-                    index = self.buffer.find(b"\n")
-                    line = self.buffer[:index]
-                    self.buffer = self.buffer[index + 1:]
-
-                    try:
-                        text = line.decode().strip()
-                    except:
-                        text = ""
-
-                    self._handle_line(text)
+                if text.startswith("WELCOME"):
+                    self.peer_addr = addr
+                    break
 
             except:
-                return
+                pass
 
-    def _handle_line(self, text):
-        if self.role == "host":
-            if text.startswith("J|"):
-                self.peer_data = text[2:]
-                self.message_id += 1
-        else:
-            if text.startswith("H|"):
-                self.peer_data = text[2:]
-                self.message_id += 1
+            if time.ticks_diff(time.ticks_ms(), start) > 30000:
+                raise Exception("no host")
 
-    def sync(self, data):
-        if self.conn == None:
-            return None
+            time.sleep(0.1)
 
-        if self.role == "host":
-            self._read_lines(8)
-            self._send_line("H|" + str(data))
-            return "PEER|" + str(self.message_id) + "|" + self.peer_data
-
-        else:
-            self._send_line("J|" + str(data))
-            self._read_lines(20)
-            return "PEER|" + str(self.message_id) + "|" + self.peer_data
-
-    def close(self):
         try:
-            self.conn.close()
+            self.sock.settimeout(0)
         except:
             pass
 
+    def _read_all_latest(self):
+        # Read every waiting packet and keep only the newest useful one.
+        while True:
+            try:
+                data, addr = self.sock.recvfrom(256)
+
+                try:
+                    text = data.decode().strip()
+                except:
+                    text = ""
+
+                if self.role == "host":
+                    if text.startswith("J|"):
+                        self.peer_data = text[2:]
+                        self.peer_addr = addr
+                        self.message_id += 1
+
+                else:
+                    if text.startswith("H|"):
+                        self.peer_data = text[2:]
+                        self.peer_addr = addr
+                        self.message_id += 1
+
+            except:
+                break
+
+    def sync(self, data):
+        if self.sock == None or self.peer_addr == None:
+            return None
+
+        # First drain old packets so we keep the newest peer data.
+        self._read_all_latest()
+
+        try:
+            if self.role == "host":
+                self.sock.sendto(("H|" + str(data)).encode(), self.peer_addr)
+            else:
+                self.sock.sendto(("J|" + str(data)).encode(), self.peer_addr)
+        except:
+            return None
+
+        # Read again in case a fresh packet arrived right after sending.
+        self._read_all_latest()
+
+        return "PEER|" + str(self.message_id) + "|" + self.peer_data
+
+    def close(self):
         try:
             self.sock.close()
         except:
             pass
 
-        self.conn = None
         self.sock = None
+        self.peer_addr = None
