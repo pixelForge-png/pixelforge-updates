@@ -20,7 +20,7 @@ GRAVITY = 1
 JUMP_POWER = -8
 MAX_FALL = 7
 
-SYNC_MS = 60
+SYNC_MS = 45
 FRAME_MS = 35
 
 # Stone Bridge map
@@ -120,17 +120,19 @@ def parse_one_player_state(data, old_player):
 
 
 def smooth_correct_player(local_player, real_player):
-    # Use this later if we need smoother remote players.
     diff_x = real_player[0] - local_player[0]
     diff_y = real_player[1] - local_player[1]
 
-    if diff_x > 18 or diff_x < -18 or diff_y > 18 or diff_y < -18:
+    # Big difference means something major happened, like respawn.
+    if diff_x > 25 or diff_x < -25 or diff_y > 25 or diff_y < -25:
         local_player[0] = real_player[0]
         local_player[1] = real_player[1]
     else:
         local_player[0] = local_player[0] + diff_x // 3
         local_player[1] = local_player[1] + diff_y // 3
 
+    # Always copy velocity and state.
+    # This is what lets prediction work between packets.
     local_player[2] = real_player[2]
     local_player[3] = real_player[3]
     local_player[4] = real_player[4]
@@ -218,6 +220,52 @@ def update_physics(player, player_num):
     if player[1] > SCREEN_H + 20:
         player[6] += 1
         respawn_player(player, player_num)
+
+def predict_remote_physics(player):
+    old_y = player[1]
+
+    # Keep using the last velocity we received from the other Pico.
+    player[3] += GRAVITY
+
+    if player[3] > MAX_FALL:
+        player[3] = MAX_FALL
+
+    player[0] += player[2]
+    player[1] += player[3]
+
+    player[0] = clamp(player[0], -25, SCREEN_W + 25)
+
+    # Platform collision prediction
+    player_bottom_old = old_y + PLAYER_H
+    player_bottom_new = player[1] + PLAYER_H
+
+    player_left = player[0]
+    player_right = player[0] + PLAYER_W
+
+    platform_left = PLATFORM_X
+    platform_right = PLATFORM_X + PLATFORM_W
+
+    touching_x = (
+        player_right >= platform_left and
+        player_left <= platform_right
+    )
+
+    falling = player[3] >= 0
+
+    crossed_platform = (
+        player_bottom_old <= PLATFORM_Y and
+        player_bottom_new >= PLATFORM_Y
+    )
+
+    if touching_x and falling and crossed_platform:
+        player[1] = PLATFORM_Y - PLAYER_H
+        player[3] = 0
+        player[5] = 1
+    else:
+        player[5] = 0
+
+    # Do NOT increase falls here.
+    # Only the real owner of that player should count falls.
 
 
 def draw_player(oled, player, color, label):
@@ -328,6 +376,10 @@ def main(oled, controls, settings, role, room_code):
             if time.ticks_diff(now, last_frame) > FRAME_MS:
                 apply_player_input(p1, left, right, up)
                 update_physics(p1, 1)
+            
+                # Predict Player 2 between packets.
+                predict_remote_physics(p2)
+            
                 last_frame = now
 
             if time.ticks_diff(now, last_sync) > SYNC_MS:
@@ -337,7 +389,8 @@ def main(oled, controls, settings, role, room_code):
                 peer = parse_peer_message(reply)
 
                 if peer != "":
-                    p2 = parse_one_player_state(peer, p2)
+                    real_p2 = parse_one_player_state(peer, p2)
+                    smooth_correct_player(p2, real_p2)
                     net_ok = True
                     last_good_net = now
                 else:
@@ -350,8 +403,12 @@ def main(oled, controls, settings, role, room_code):
         # -------------------------
         else:
             if time.ticks_diff(now, last_frame) > FRAME_MS:
+                # Predict Player 1 between packets.
+                predict_remote_physics(p1)
+            
                 apply_player_input(p2, left, right, up)
                 update_physics(p2, 2)
+            
                 last_frame = now
 
             if time.ticks_diff(now, last_sync) > SYNC_MS:
@@ -361,7 +418,8 @@ def main(oled, controls, settings, role, room_code):
                 peer = parse_peer_message(reply)
 
                 if peer != "":
-                    p1 = parse_one_player_state(peer, p1)
+                    real_p1 = parse_one_player_state(peer, p1)
+                    smooth_correct_player(p1, real_p1)
                     net_ok = True
                     last_good_net = now
                 else:
