@@ -25,37 +25,43 @@ class LocalSocketClient:
             self._join_connect()
 
     def _host_connect(self):
-        # Turn off normal Wi-Fi first.
         try:
             sta = network.WLAN(network.STA_IF)
             sta.active(False)
         except:
             pass
 
-        # Restart AP mode cleanly.
         ap = network.WLAN(network.AP_IF)
-        ap.active(False)
-        time.sleep(0.5)
-        ap.active(True)
 
-        # Open network for testing. No password.
-        ap.config(essid=LOCAL_SSID)
-
-        # Force host IP if supported.
         try:
-            ap.ifconfig((LOCAL_HOST_IP, "255.255.255.0", LOCAL_HOST_IP, "8.8.8.8"))
+            ap.active(False)
+            time.sleep(0.8)
         except:
             pass
 
-        # Give the hotspot time to appear.
-        time.sleep(4)
+        ap.active(True)
+        time.sleep(0.5)
+
+        # Try to rename the hotspot.
+        # If the Pico ignores this, it may still show as PICO####.
+        try:
+            ap.config(essid=LOCAL_SSID)
+        except:
+            pass
+
+        try:
+            ap.ifconfig((LOCAL_HOST_IP, "255.255.255.0", LOCAL_HOST_IP, LOCAL_HOST_IP))
+        except:
+            pass
+
+        # Give the hotspot time to fully appear.
+        time.sleep(5)
 
         self.sock = socket.socket()
         self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.sock.bind(("0.0.0.0", LOCAL_PORT))
         self.sock.listen(1)
 
-        # Wait until joiner connects.
         self.conn, addr = self.sock.accept()
 
         try:
@@ -64,7 +70,6 @@ class LocalSocketClient:
             pass
 
     def _join_connect(self):
-        # Turn off AP mode on joiner.
         try:
             ap = network.WLAN(network.AP_IF)
             ap.active(False)
@@ -73,28 +78,36 @@ class LocalSocketClient:
 
         wlan = network.WLAN(network.STA_IF)
 
-        # Restart station mode cleanly.
         wlan.active(False)
-        time.sleep(0.5)
+        time.sleep(0.8)
         wlan.active(True)
-        time.sleep(0.5)
+        time.sleep(1)
 
-        # Scan first so we know the host network exists.
-        found = False
+        # Look for either PixelForgeLocal or the Pico's default PICO#### hotspot.
+        target_ssid = None
         scan_start = time.ticks_ms()
 
-        while time.ticks_diff(time.ticks_ms(), scan_start) < 12000:
+        while time.ticks_diff(time.ticks_ms(), scan_start) < 15000:
             try:
                 networks = wlan.scan()
 
                 for net in networks:
-                    ssid = net[0].decode()
+                    try:
+                        ssid = net[0].decode()
+                    except:
+                        ssid = str(net[0])
+
+                    ssid_upper = ssid.upper()
 
                     if ssid == LOCAL_SSID:
-                        found = True
+                        target_ssid = ssid
                         break
 
-                if found:
+                    if ssid_upper.startswith("PICO"):
+                        target_ssid = ssid
+                        break
+
+                if target_ssid != None:
                     break
 
             except:
@@ -102,10 +115,9 @@ class LocalSocketClient:
 
             time.sleep(0.5)
 
-        if not found:
+        if target_ssid == None:
             raise Exception("no local ap")
 
-        # Connect to open local network.
         try:
             wlan.disconnect()
         except:
@@ -113,17 +125,17 @@ class LocalSocketClient:
 
         time.sleep(0.5)
 
-        wlan.connect(LOCAL_SSID)
+        # Connect to the network we actually found.
+        wlan.connect(target_ssid)
 
         start = time.ticks_ms()
 
         while not wlan.isconnected():
             if time.ticks_diff(time.ticks_ms(), start) > 15000:
-                raise Exception("local wifi 110")
+                raise Exception("wifi 110 " + target_ssid[:8])
 
             time.sleep(0.2)
 
-        # Give DHCP a moment.
         time.sleep(1)
 
         self.conn = socket.socket()
