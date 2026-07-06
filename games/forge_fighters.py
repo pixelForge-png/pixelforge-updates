@@ -77,30 +77,37 @@ def parse_peer_message(msg):
 
     return parts[2]
 
+def make_one_player_state(player):
+    return (
+        str(int(player[0])) + "," +
+        str(int(player[1])) + "," +
+        str(int(player[2])) + "," +
+        str(int(player[3])) + "," +
+        str(int(player[4])) + "," +
+        str(int(player[5])) + "," +
+        str(int(player[6]))
+    )
 
-def make_input_packet(left, right, up):
-    # left,right,up
-    l = 1 if left else 0
-    r = 1 if right else 0
-    u = 1 if up else 0
 
-    return str(l) + "," + str(r) + "," + str(u)
-
-
-def parse_input_packet(data):
+def parse_one_player_state(data, old_player):
     try:
         parts = data.split(",")
 
-        if len(parts) < 3:
-            return False, False, False
+        if len(parts) < 7:
+            return old_player
 
-        left = parse_int(parts[0]) == 1
-        right = parse_int(parts[1]) == 1
-        up = parse_int(parts[2]) == 1
+        return [
+            parse_int(parts[0], old_player[0]),
+            parse_int(parts[1], old_player[1]),
+            parse_int(parts[2], old_player[2]),
+            parse_int(parts[3], old_player[3]),
+            parse_int(parts[4], old_player[4]),
+            parse_int(parts[5], old_player[5]),
+            parse_int(parts[6], old_player[6])
+        ]
 
-        return left, right, up
     except:
-        return False, False, False
+        return old_player
 
 
 def make_state(p1, p2):
@@ -317,27 +324,60 @@ def draw_game(oled, role, p1, p2, net_ok):
 def main(oled, controls, settings, role, room_code):
     wait_screen(oled, "FORGE FIGHTERS", "CONNECTING", room_code)
 
-    mode = settings.get("mp_mode", "online")
+    mp_mode = settings.get("mp_mode", "online")
     ws = MultiplayerClient(mode)
 
-    try:
-        ws.connect(room_code, role)
-    except Exception as e:
-        oled.fill(BLACK)
-        center_text(oled, "WS FAIL", 16)
-        center_text(oled, str(e)[:18], 38)
-        oled.show()
-        time.sleep(5)
-        return
+            # -------------------------
+        # HOST: controls Player 1 locally
+        # -------------------------
+    if role == "host":
+        if time.ticks_diff(now, last_frame) > FRAME_MS:
+            apply_player_input(p1, left, right, up)
+            update_physics(p1, 1)
+            last_frame = now
+
+        if time.ticks_diff(now, last_sync) > SYNC_MS:
+            packet = make_one_player_state(p1)
+
+            reply = ws.sync(packet)
+            peer = parse_peer_message(reply)
+
+            if peer != "":
+                p2 = parse_one_player_state(peer, p2)
+                net_ok = True
+                last_good_net = now
+            else:
+                net_ok = False
+
+            last_sync = now
+
+        # -------------------------
+        # JOINER: controls Player 2 locally
+        # -------------------------
+        else:
+            if time.ticks_diff(now, last_frame) > FRAME_MS:
+                apply_player_input(p2, left, right, up)
+                update_physics(p2, 2)
+                last_frame = now
+
+            if time.ticks_diff(now, last_sync) > SYNC_MS:
+                packet = make_one_player_state(p2)
+
+                reply = ws.sync(packet)
+                peer = parse_peer_message(reply)
+
+                if peer != "":
+                    p1 = parse_one_player_state(peer, p1)
+                    net_ok = True
+                    last_good_net = now
+                else:
+                    net_ok = False
+
+                last_sync = now
 
     # p1 = host, p2 = joiner
     p1 = make_player(RESPAWN_1_X, RESPAWN_Y, 1)
     p2 = make_player(RESPAWN_2_X, RESPAWN_Y, -1)
-
-    # joiner input saved on host
-    j_left = False
-    j_right = False
-    j_up = False
 
     last_frame = time.ticks_ms()
     last_sync = time.ticks_ms()
