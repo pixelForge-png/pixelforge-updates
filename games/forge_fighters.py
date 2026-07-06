@@ -48,6 +48,8 @@ PBLASTX = 21
 PBLASTY = 22
 PBLASTTIMER = 23
 PSPECDIR = 24
+PJUMPS = 25
+PUPHELD = 26
 
 ACTION_IDLE = 0
 ACTION_RUN = 1
@@ -77,9 +79,6 @@ CHARACTERS = [
         "weight": 1,
         "attack_damage": 10,
         "attack_knockback": 5,
-        "special_name": "Blade Dash",
-        "special_damage": 14,
-        "special_knockback": 7,
         "special_cooldown": 45
     },
     {
@@ -92,9 +91,6 @@ CHARACTERS = [
         "weight": 0,
         "attack_damage": 8,
         "attack_knockback": 4,
-        "special_name": "Shadow Burst",
-        "special_damage": 8,
-        "special_knockback": 5,
         "special_cooldown": 32
     },
     {
@@ -107,9 +103,6 @@ CHARACTERS = [
         "weight": 2,
         "attack_damage": 14,
         "attack_knockback": 7,
-        "special_name": "Stone Force",
-        "special_damage": 18,
-        "special_knockback": 9,
         "special_cooldown": 60
     }
 ]
@@ -283,8 +276,9 @@ def rects_touch(a, b):
 
 def draw_preview_fighter(oled, x, y, char_index):
     char = get_character(char_index)
-    draw_fighter(oled, char["id"], x, y, 1, ACTION_IDLE, time.ticks_ms() // 40, WHITE)
-    draw_fighter(oled, char["id"], x + 1, y, 1, ACTION_IDLE, time.ticks_ms() // 40, WHITE)
+    tick = time.ticks_ms() // 40
+    draw_fighter(oled, char["id"], x, y, 1, ACTION_IDLE, tick, WHITE)
+    draw_fighter(oled, char["id"], x + 1, y, 1, ACTION_IDLE, tick, WHITE)
 
 
 def character_select(oled, controls, role):
@@ -408,8 +402,6 @@ def map_select(oled, controls):
 
 
 def setup_sync(oled, ws, controls, role, chosen_char, chosen_map):
-    final_map = chosen_map
-
     while True:
         if role == "host":
             packet = "SETUP|" + str(chosen_char) + "|" + str(chosen_map)
@@ -432,8 +424,7 @@ def setup_sync(oled, ws, controls, role, chosen_char, chosen_map):
                     return peer_char, chosen_map
 
                 if peer_map >= 0:
-                    final_map = peer_map
-                    return peer_char, final_map
+                    return peer_char, peer_map
 
         if controls["yellow"]():
             wait_button_release(controls)
@@ -451,14 +442,15 @@ def make_player(x, y, facing, char_index):
         0, 0, 0,
         0, 45, 35,
         x, y, 0,
-        SPEC_SIDE
+        SPEC_SIDE,
+        2, 0
     ]
 
 
 def make_packet(player, hit_id, hit_damage, hit_kbx, hit_kby, pause_state, map_index):
     values = []
 
-    for i in range(25):
+    for i in range(27):
         values.append(str(int(player[i])))
 
     values.append(str(int(hit_id)))
@@ -475,20 +467,20 @@ def parse_packet(data, old_player):
     try:
         parts = data.split(",")
 
-        if len(parts) < 31:
+        if len(parts) < 33:
             return old_player, 0, 0, 0, 0, PAUSE_PLAY, 0
 
         player = []
 
-        for i in range(25):
+        for i in range(27):
             player.append(parse_int(parts[i], old_player[i]))
 
-        hit_id = parse_int(parts[25], 0)
-        hit_damage = parse_int(parts[26], 0)
-        hit_kbx = parse_int(parts[27], 0)
-        hit_kby = parse_int(parts[28], 0)
-        pause_state = parse_int(parts[29], PAUSE_PLAY)
-        map_index = parse_int(parts[30], 0)
+        hit_id = parse_int(parts[27], 0)
+        hit_damage = parse_int(parts[28], 0)
+        hit_kbx = parse_int(parts[29], 0)
+        hit_kby = parse_int(parts[30], 0)
+        pause_state = parse_int(parts[31], PAUSE_PLAY)
+        map_index = parse_int(parts[32], 0)
 
         return player, hit_id, hit_damage, hit_kbx, hit_kby, pause_state, map_index
 
@@ -507,7 +499,7 @@ def smooth_correct_player(local_player, real_player):
         local_player[PX] = local_player[PX] + diff_x // 3
         local_player[PY] = local_player[PY] + diff_y // 3
 
-    for i in range(2, 25):
+    for i in range(2, 27):
         local_player[i] = real_player[i]
 
 
@@ -542,6 +534,8 @@ def respawn_player(player, player_num, map_index):
     player[PINVINCIBLE] = 60
     player[PSPAWNWAIT] = 35
     player[PSPECDIR] = SPEC_SIDE
+    player[PJUMPS] = 2
+    player[PUPHELD] = 0
 
 
 def start_attack(player):
@@ -560,6 +554,7 @@ def start_attack(player):
 
 def start_directional_special(player, left, right, up, down):
     char = get_character(player[PCHAR])
+    char_id = char["id"]
 
     if player[PSPECCD] > 0:
         return
@@ -579,38 +574,79 @@ def start_directional_special(player, left, right, up, down):
     player[PSPECCD] = char["special_cooldown"]
     player[PSPECDONE] = 0
 
+    # UP SPECIALS: recovery moves
     if up:
         player[PSPECDIR] = SPEC_UP
 
-        if char["id"] == "nyra":
-            player[PVY] = -13
-            player[PVX] = player[PFACING] * 2
-        elif char["id"] == "brugo":
-            player[PVY] = -10
-            player[PVX] = player[PFACING]
-        else:
+        if char_id == "kael":
+            # Rising Slash
             player[PVY] = -12
             player[PVX] = player[PFACING] * 2
+            player[PTIMER] = 20
 
+        elif char_id == "nyra":
+            # Sky Needle
+            player[PVY] = -15
+            player[PVX] = player[PFACING] * 3
+            player[PTIMER] = 18
+
+        else:
+            # Stone Uppercut
+            player[PVY] = -10
+            player[PVX] = player[PFACING]
+            player[PTIMER] = 22
+
+    # DOWN SPECIALS
     elif down:
         player[PSPECDIR] = SPEC_DOWN
 
-        if player[PONGROUND] == 1:
-            player[PVY] = 0
+        if char_id == "kael":
+            # Guard Break
+            player[PVX] = 0
+
+            if player[PONGROUND] == 0:
+                player[PVY] = 7
+
+            player[PTIMER] = 16
+
+        elif char_id == "nyra":
+            # Shadow Drop
+            player[PVX] = player[PFACING] * 4
+            player[PVY] = 7
+            player[PTIMER] = 16
+
         else:
-            player[PVY] = 8
+            # Earthquake
+            player[PVX] = 0
 
-        player[PVX] = 0
+            if player[PONGROUND] == 0:
+                player[PVY] = 10
+            else:
+                player[PVY] = 0
 
+            player[PTIMER] = 24
+
+    # SIDE SPECIALS
     else:
         player[PSPECDIR] = SPEC_SIDE
 
-        if char["id"] == "kael":
+        if char_id == "kael":
+            # Blade Dash
             player[PVX] = player[PFACING] * 7
-        elif char["id"] == "nyra":
-            player[PVX] = player[PFACING] * 9
+            player[PVY] = 0
+            player[PTIMER] = 18
+
+        elif char_id == "nyra":
+            # Shadow Step
+            player[PVX] = player[PFACING] * 10
+            player[PVY] = 0
+            player[PTIMER] = 14
+
         else:
-            player[PVX] = player[PFACING] * 4
+            # Boulder Charge
+            player[PVX] = player[PFACING] * 5
+            player[PVY] = 0
+            player[PTIMER] = 24
 
 
 def tick_timers(player):
@@ -651,45 +687,73 @@ def tick_timers(player):
 
 def apply_special_motion(player):
     char = get_character(player[PCHAR])
+    char_id = char["id"]
 
     if player[PACTION] != ACTION_SPECIAL:
         return
 
     spec_dir = player[PSPECDIR]
 
+    # UP SPECIAL MOTION
     if spec_dir == SPEC_UP:
-        if player[PTIMER] > 8:
-            if char["id"] == "nyra":
-                player[PVY] = -8
-            elif char["id"] == "brugo":
-                player[PVY] = -5
-            else:
+        if char_id == "kael":
+            if player[PTIMER] > 9:
                 player[PVY] = -7
+                player[PVX] = player[PFACING] * 2
+
+        elif char_id == "nyra":
+            if player[PTIMER] > 8:
+                player[PVY] = -9
+                player[PVX] = player[PFACING] * 3
+
+        else:
+            if player[PTIMER] > 11:
+                player[PVY] = -5
+                player[PVX] = player[PFACING]
 
         return
 
+    # DOWN SPECIAL MOTION
     if spec_dir == SPEC_DOWN:
-        if player[PONGROUND] == 0:
-            player[PVY] += 2
-        player[PVX] = 0
+        if char_id == "kael":
+            if player[PONGROUND] == 0:
+                player[PVY] += 1
+            player[PVX] = 0
+
+        elif char_id == "nyra":
+            if player[PTIMER] > 6:
+                player[PVX] = player[PFACING] * 4
+                player[PVY] = 7
+            else:
+                player[PVX] = 0
+
+        else:
+            if player[PONGROUND] == 0:
+                player[PVY] += 3
+            player[PVX] = 0
+
         return
 
-    if char["id"] == "kael":
+    # SIDE SPECIAL MOTION
+    if char_id == "kael":
         if player[PTIMER] > 5:
             if player[PVX] == 0:
-                player[PVX] = player[PFACING] * 6
+                player[PVX] = player[PFACING] * 7
         else:
             player[PVX] = 0
 
-    elif char["id"] == "nyra":
-        if player[PTIMER] > 6:
+    elif char_id == "nyra":
+        if player[PTIMER] > 5:
             if player[PVX] == 0:
-                player[PVX] = player[PFACING] * 8
+                player[PVX] = player[PFACING] * 9
         else:
             player[PVX] = 0
 
     else:
-        if player[PTIMER] < 8:
+        if player[PTIMER] > 8:
+            if player[PVX] == 0:
+                player[PVX] = player[PFACING] * 4
+        else:
             player[PVX] = 0
 
 
@@ -701,6 +765,16 @@ def apply_player_input(player, left, right, up, down, attack, special):
     if player[PSPAWNWAIT] > 0:
         if left or right or up or down:
             player[PSPAWNWAIT] = 0
+
+    # One jump per up press.
+    jump_pressed = False
+
+    if up and player[PUPHELD] == 0:
+        jump_pressed = True
+        player[PUPHELD] = 1
+
+    if not up:
+        player[PUPHELD] = 0
 
     if down and player[PONGROUND] == 1 and player[PACTION] != ACTION_ATTACK and player[PACTION] != ACTION_SPECIAL:
         player[PCROUCH] = 1
@@ -744,9 +818,17 @@ def apply_player_input(player, left, right, up, down, attack, special):
     else:
         player[PVX] = 0
 
-    if up and player[PONGROUND] == 1:
-        player[PVY] = jump_power
-        player[PONGROUND] = 0
+    # Double jump system.
+    if jump_pressed:
+        if player[PONGROUND] == 1:
+            player[PVY] = jump_power
+            player[PONGROUND] = 0
+            player[PJUMPS] = 1
+
+        elif player[PJUMPS] > 0:
+            player[PVY] = jump_power
+            player[PJUMPS] -= 1
+            player[PONGROUND] = 0
 
     if player[PONGROUND] == 0:
         player[PACTION] = ACTION_JUMP
@@ -784,6 +866,7 @@ def collide_platforms(player, old_y, map_index):
             player[PY] = py - PLAYER_H
             player[PVY] = 0
             player[PONGROUND] = 1
+            player[PJUMPS] = 2
             return
 
     player[PONGROUND] = 0
@@ -892,40 +975,52 @@ def special_rect(player):
     x = player[PX]
     y = player[PY]
     char = get_character(player[PCHAR])
+    char_id = char["id"]
     spec_dir = player[PSPECDIR]
 
+    # UP SPECIAL HITBOXES
     if spec_dir == SPEC_UP:
-        if char["id"] == "brugo":
-            return [x - 6, y - 18, PLAYER_W + 12, 28]
-        elif char["id"] == "nyra":
-            return [x - 10, y - 24, PLAYER_W + 20, 34]
-        else:
-            return [x - 8, y - 22, PLAYER_W + 16, 32]
+        if char_id == "kael":
+            return [x - 8, y - 24, PLAYER_W + 16, 34]
 
+        elif char_id == "nyra":
+            return [x - 6, y - 32, PLAYER_W + 12, 42]
+
+        else:
+            return [x - 16, y - 20, PLAYER_W + 32, 30]
+
+    # DOWN SPECIAL HITBOXES
     if spec_dir == SPEC_DOWN:
-        if char["id"] == "brugo":
-            return [x - 30, y + PLAYER_H - 5, PLAYER_W + 60, 12]
-        elif char["id"] == "nyra":
-            return [x - 20, y + PLAYER_H - 4, PLAYER_W + 40, 10]
-        else:
-            return [x - 22, y + PLAYER_H - 5, PLAYER_W + 44, 10]
+        if char_id == "kael":
+            return [x - 24, y + PLAYER_H - 6, PLAYER_W + 48, 12]
 
-    if char["id"] == "kael":
+        elif char_id == "nyra":
+            if player[PFACING] >= 0:
+                return [x + PLAYER_W, y + 5, 30, 14]
+            else:
+                return [x - 30, y + 5, 30, 14]
+
+        else:
+            return [x - 50, y + PLAYER_H - 6, PLAYER_W + 100, 14]
+
+    # SIDE SPECIAL HITBOXES
+    if char_id == "kael":
         if player[PFACING] >= 0:
-            return [x + PLAYER_W, y + 1, 30, 14]
+            return [x + PLAYER_W, y + 1, 32, 14]
         else:
-            return [x - 30, y + 1, 30, 14]
+            return [x - 32, y + 1, 32, 14]
 
-    if char["id"] == "nyra":
+    elif char_id == "nyra":
         if player[PFACING] >= 0:
-            return [x + PLAYER_W, y, 34, 16]
+            return [x + PLAYER_W, y, 40, 16]
         else:
-            return [x - 34, y, 34, 16]
+            return [x - 40, y, 40, 16]
 
-    if player[PFACING] >= 0:
-        return [x + PLAYER_W, y + 5, 26, 12]
     else:
-        return [x - 26, y + 5, 26, 12]
+        if player[PFACING] >= 0:
+            return [x + PLAYER_W, y + 3, 30, 16]
+        else:
+            return [x - 30, y + 3, 30, 16]
 
 
 def check_attack_hit(attacker, victim):
@@ -963,18 +1058,64 @@ def create_hit_event(attacker, victim, next_hit_id, hit_type):
     char = get_character(attacker[PCHAR])
     victim_char = get_character(victim[PCHAR])
 
+    char_id = char["id"]
+    damage = char["attack_damage"]
+    base_kb = char["attack_knockback"]
+    kby = -3
+
     if hit_type == "special":
-        damage = char["special_damage"]
-        base_kb = char["special_knockback"]
+        spec_dir = attacker[PSPECDIR]
 
-        if attacker[PSPECDIR] == SPEC_UP:
-            base_kb -= 1
+        # KAEL
+        if char_id == "kael":
+            if spec_dir == SPEC_SIDE:
+                damage = 14
+                base_kb = 7
+                kby = -4
 
-        if attacker[PSPECDIR] == SPEC_DOWN:
-            base_kb += 1
-    else:
-        damage = char["attack_damage"]
-        base_kb = char["attack_knockback"]
+            elif spec_dir == SPEC_UP:
+                damage = 11
+                base_kb = 6
+                kby = -8
+
+            else:
+                damage = 13
+                base_kb = 7
+                kby = -2
+
+        # NYRA
+        elif char_id == "nyra":
+            if spec_dir == SPEC_SIDE:
+                damage = 8
+                base_kb = 6
+                kby = -3
+
+            elif spec_dir == SPEC_UP:
+                damage = 7
+                base_kb = 5
+                kby = -9
+
+            else:
+                damage = 10
+                base_kb = 5
+                kby = 5
+
+        # BRUGO
+        else:
+            if spec_dir == SPEC_SIDE:
+                damage = 16
+                base_kb = 8
+                kby = -3
+
+            elif spec_dir == SPEC_UP:
+                damage = 15
+                base_kb = 8
+                kby = -9
+
+            else:
+                damage = 20
+                base_kb = 10
+                kby = -4
 
     kb = base_kb + victim[PDAMAGE] // 15 - victim_char["weight"]
 
@@ -987,18 +1128,15 @@ def create_hit_event(attacker, victim, next_hit_id, hit_type):
         kbx = -kb
 
     if hit_type == "special" and attacker[PSPECDIR] == SPEC_UP:
-        kby = -7
         kbx = kbx // 2
 
-    elif hit_type == "special" and attacker[PSPECDIR] == SPEC_DOWN:
-        kby = -2
-        kbx = kbx + attacker[PFACING] * 2
-
-    elif hit_type == "special":
-        kby = -4
-
-    else:
-        kby = -3
+    if hit_type == "special" and attacker[PSPECDIR] == SPEC_DOWN:
+        if char_id == "brugo":
+            kbx = kbx + attacker[PFACING] * 2
+        elif char_id == "nyra":
+            kbx = attacker[PFACING] * 3
+        else:
+            kbx = attacker[PFACING] * 4
 
     return next_hit_id, damage, kbx, kby
 
@@ -1044,7 +1182,7 @@ def draw_action_effect(oled, player, camera_x):
     sx = world_to_screen_x(player[PX] + PLAYER_W // 2, camera_x)
     sy = player[PY] + PLAYER_H // 2
 
-    if sx < -40 or sx > SCREEN_W + 40:
+    if sx < -50 or sx > SCREEN_W + 50:
         return
 
     if attack_active(player):
@@ -1058,7 +1196,12 @@ def draw_action_effect(oled, player, camera_x):
             draw_wind_down(oled, sx, player[PY] + PLAYER_H)
 
         else:
-            draw_wind_side(oled, sx, sy, player[PFACING], 30)
+            if get_character(player[PCHAR])["id"] == "nyra":
+                draw_wind_side(oled, sx, sy, player[PFACING], 34)
+            elif get_character(player[PCHAR])["id"] == "brugo":
+                draw_wind_side(oled, sx, sy, player[PFACING], 26)
+            else:
+                draw_wind_side(oled, sx, sy, player[PFACING], 30)
 
 
 def draw_player(oled, player, label, camera_x):
@@ -1076,7 +1219,6 @@ def draw_player(oled, player, label, camera_x):
     action = int(player[PACTION])
     anim_tick = time.ticks_ms() // 40
 
-    # Draw twice to make the stick-figure thicker/bigger.
     draw_fighter(oled, char["id"], screen_x, base_y, player[PFACING], action, anim_tick, WHITE)
     draw_fighter(oled, char["id"], screen_x + 1, base_y, player[PFACING], action, anim_tick, WHITE)
 
