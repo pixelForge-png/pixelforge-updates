@@ -30,7 +30,7 @@
       "title": "Forge Fighters",
       "file": "games/forge_fighters.py",
       "module": "games.forge_fighters",
-      "version": 10,
+      "version": 11,
       "display_version": "1.0",
       "channel": "release",
       "mode": "multiplayer",
