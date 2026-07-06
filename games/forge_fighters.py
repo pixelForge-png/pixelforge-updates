@@ -5,6 +5,7 @@ from helpers.forge_sprites import draw_fighter, draw_blast
 
 SCREEN_W = 160
 SCREEN_H = 80
+WORLD_W = 280
 
 BLACK = 0
 WHITE = 65535
@@ -12,11 +13,11 @@ GRAY = 33808
 CYAN = 2047
 YELLOW = 65504
 
-PLAYER_W = 7
-PLAYER_H = 12
+PLAYER_W = 12
+PLAYER_H = 18
 
 GRAVITY = 1
-MAX_FALL = 7
+MAX_FALL = 8
 
 SYNC_MS = 45
 FRAME_MS = 35
@@ -46,6 +47,7 @@ PSPAWNWAIT = 20
 PBLASTX = 21
 PBLASTY = 22
 PBLASTTIMER = 23
+PSPECDIR = 24
 
 ACTION_IDLE = 0
 ACTION_RUN = 1
@@ -55,6 +57,10 @@ ACTION_HURT = 4
 ACTION_SPECIAL = 5
 ACTION_CROUCH = 6
 ACTION_SPAWN = 7
+
+SPEC_SIDE = 0
+SPEC_UP = 1
+SPEC_DOWN = 2
 
 PAUSE_PLAY = 0
 PAUSE_PAUSED = 1
@@ -67,7 +73,7 @@ CHARACTERS = [
         "title": "Ironblade",
         "short": "KAE",
         "speed": 3,
-        "jump": -8,
+        "jump": -9,
         "weight": 1,
         "attack_damage": 10,
         "attack_knockback": 5,
@@ -82,11 +88,11 @@ CHARACTERS = [
         "title": "Swiftfang",
         "short": "NYR",
         "speed": 4,
-        "jump": -9,
+        "jump": -10,
         "weight": 0,
         "attack_damage": 8,
         "attack_knockback": 4,
-        "special_name": "Shadow Step",
+        "special_name": "Shadow Burst",
         "special_damage": 8,
         "special_knockback": 5,
         "special_cooldown": 32
@@ -97,11 +103,11 @@ CHARACTERS = [
         "title": "Stonehelm",
         "short": "BRU",
         "speed": 2,
-        "jump": -7,
+        "jump": -8,
         "weight": 2,
         "attack_damage": 14,
         "attack_knockback": 7,
-        "special_name": "Ground Break",
+        "special_name": "Stone Force",
         "special_damage": 18,
         "special_knockback": 9,
         "special_cooldown": 60
@@ -113,35 +119,35 @@ MAPS = [
         "id": "stone_bridge",
         "name": "Stone Bridge",
         "platforms": [
-            [20, 62, 120, 4]
+            [40, 62, 200, 4]
         ],
-        "spawn1": [45, 35],
-        "spawn2": [108, 35],
-        "death_y": 100
+        "spawn1": [95, 35],
+        "spawn2": [175, 35],
+        "death_y": 104
     },
     {
         "id": "sky_ruins",
         "name": "Sky Ruins",
         "platforms": [
-            [35, 64, 90, 4],
-            [12, 42, 38, 4],
-            [110, 42, 38, 4]
+            [65, 64, 150, 4],
+            [18, 42, 58, 4],
+            [204, 42, 58, 4]
         ],
-        "spawn1": [45, 35],
-        "spawn2": [108, 35],
-        "death_y": 100
+        "spawn1": [95, 35],
+        "spawn2": [175, 35],
+        "death_y": 104
     },
     {
         "id": "lava_pit",
         "name": "Lava Pit",
         "platforms": [
-            [42, 62, 76, 4],
-            [10, 47, 36, 4],
-            [114, 47, 36, 4]
+            [82, 62, 116, 4],
+            [20, 47, 58, 4],
+            [202, 47, 58, 4]
         ],
-        "spawn1": [52, 35],
-        "spawn2": [101, 35],
-        "death_y": 86
+        "spawn1": [108, 35],
+        "spawn2": [160, 35],
+        "death_y": 88
     }
 ]
 
@@ -216,11 +222,47 @@ def get_map(map_index):
     return MAPS[map_index]
 
 
-def draw_rect(oled, x, y, w, h, color):
-    oled.hline(x, y, w, color)
-    oled.hline(x, y + h - 1, w, color)
-    oled.vline(x, y, h, color)
-    oled.vline(x + w - 1, y, h, color)
+def get_camera_x(local_player):
+    target = local_player[PX] + PLAYER_W // 2 - SCREEN_W // 2
+    return clamp(target, 0, WORLD_W - SCREEN_W)
+
+
+def world_to_screen_x(x, camera_x):
+    return int(x - camera_x)
+
+
+def draw_line(oled, x1, y1, x2, y2, color):
+    dx = abs(x2 - x1)
+    dy = -abs(y2 - y1)
+
+    if x1 < x2:
+        sx = 1
+    else:
+        sx = -1
+
+    if y1 < y2:
+        sy = 1
+    else:
+        sy = -1
+
+    err = dx + dy
+
+    while True:
+        if x1 >= 0 and x1 < SCREEN_W and y1 >= 0 and y1 < SCREEN_H:
+            oled.pixel(x1, y1, color)
+
+        if x1 == x2 and y1 == y2:
+            break
+
+        e2 = 2 * err
+
+        if e2 >= dy:
+            err += dy
+            x1 += sx
+
+        if e2 <= dx:
+            err += dx
+            y1 += sy
 
 
 def rects_touch(a, b):
@@ -242,6 +284,7 @@ def rects_touch(a, b):
 def draw_preview_fighter(oled, x, y, char_index):
     char = get_character(char_index)
     draw_fighter(oled, char["id"], x, y, 1, ACTION_IDLE, time.ticks_ms() // 40, WHITE)
+    draw_fighter(oled, char["id"], x + 1, y, 1, ACTION_IDLE, time.ticks_ms() // 40, WHITE)
 
 
 def character_select(oled, controls, role):
@@ -268,8 +311,7 @@ def character_select(oled, controls, role):
         stat_line = "SPD" + str(char["speed"]) + " JMP" + str(abs(char["jump"]))
         oled.text(stat_line, 18, 55, WHITE)
 
-        # Preview is on right side so it does not overlap text.
-        draw_preview_fighter(oled, 132, 60, index)
+        draw_preview_fighter(oled, 133, 60, index)
 
         oled.text("G=Pick", 2, 70, WHITE)
         oled.text("Y=Back", 104, 70, GRAY)
@@ -307,7 +349,14 @@ def draw_map_preview(oled, map_index):
     m = get_map(map_index)
 
     for p in m["platforms"]:
-        oled.fill_rect(p[0], p[1], p[2], p[3], WHITE)
+        x = p[0] * SCREEN_W // WORLD_W
+        y = p[1]
+        w = p[2] * SCREEN_W // WORLD_W
+
+        if w < 2:
+            w = 2
+
+        oled.fill_rect(x, y, w, p[3], WHITE)
 
 
 def map_select(oled, controls):
@@ -359,7 +408,6 @@ def map_select(oled, controls):
 
 
 def setup_sync(oled, ws, controls, role, chosen_char, chosen_map):
-    peer_char = 0
     final_map = chosen_map
 
     while True:
@@ -402,14 +450,15 @@ def make_player(x, y, facing, char_index):
         0, 0, 0,
         0, 0, 0,
         0, 45, 35,
-        x, y, 0
+        x, y, 0,
+        SPEC_SIDE
     ]
 
 
 def make_packet(player, hit_id, hit_damage, hit_kbx, hit_kby, pause_state, map_index):
     values = []
 
-    for i in range(24):
+    for i in range(25):
         values.append(str(int(player[i])))
 
     values.append(str(int(hit_id)))
@@ -426,20 +475,20 @@ def parse_packet(data, old_player):
     try:
         parts = data.split(",")
 
-        if len(parts) < 30:
+        if len(parts) < 31:
             return old_player, 0, 0, 0, 0, PAUSE_PLAY, 0
 
         player = []
 
-        for i in range(24):
+        for i in range(25):
             player.append(parse_int(parts[i], old_player[i]))
 
-        hit_id = parse_int(parts[24], 0)
-        hit_damage = parse_int(parts[25], 0)
-        hit_kbx = parse_int(parts[26], 0)
-        hit_kby = parse_int(parts[27], 0)
-        pause_state = parse_int(parts[28], PAUSE_PLAY)
-        map_index = parse_int(parts[29], 0)
+        hit_id = parse_int(parts[25], 0)
+        hit_damage = parse_int(parts[26], 0)
+        hit_kbx = parse_int(parts[27], 0)
+        hit_kby = parse_int(parts[28], 0)
+        pause_state = parse_int(parts[29], PAUSE_PLAY)
+        map_index = parse_int(parts[30], 0)
 
         return player, hit_id, hit_damage, hit_kbx, hit_kby, pause_state, map_index
 
@@ -451,20 +500,20 @@ def smooth_correct_player(local_player, real_player):
     diff_x = real_player[PX] - local_player[PX]
     diff_y = real_player[PY] - local_player[PY]
 
-    if diff_x > 25 or diff_x < -25 or diff_y > 25 or diff_y < -25:
+    if diff_x > 35 or diff_x < -35 or diff_y > 25 or diff_y < -25:
         local_player[PX] = real_player[PX]
         local_player[PY] = real_player[PY]
     else:
         local_player[PX] = local_player[PX] + diff_x // 3
         local_player[PY] = local_player[PY] + diff_y // 3
 
-    for i in range(2, 24):
+    for i in range(2, 25):
         local_player[i] = real_player[i]
 
 
 def start_death_blast(player):
-    player[PBLASTX] = player[PX]
-    player[PBLASTY] = player[PY]
+    player[PBLASTX] = player[PX] + PLAYER_W // 2
+    player[PBLASTY] = player[PY] + PLAYER_H // 2
     player[PBLASTTIMER] = 12
 
 
@@ -474,8 +523,7 @@ def respawn_player(player, player_num, map_index):
     else:
         player[PFACING] = -1
 
-    # Spawn above center and wait briefly.
-    player[PX] = SCREEN_W // 2
+    player[PX] = WORLD_W // 2 - PLAYER_W // 2
     player[PY] = 5
     player[PVX] = 0
     player[PVY] = 0
@@ -493,6 +541,7 @@ def respawn_player(player, player_num, map_index):
     player[PCROUCH] = 0
     player[PINVINCIBLE] = 60
     player[PSPAWNWAIT] = 35
+    player[PSPECDIR] = SPEC_SIDE
 
 
 def start_attack(player):
@@ -525,28 +574,43 @@ def start_directional_special(player, left, right, up, down):
         player[PFACING] = 1
 
     player[PACTION] = ACTION_SPECIAL
-    player[PTIMER] = 16
-    player[PSPECTIMER] = 16
+    player[PTIMER] = 18
+    player[PSPECTIMER] = 18
     player[PSPECCD] = char["special_cooldown"]
     player[PSPECDONE] = 0
 
-    # Directional red specials:
-    # up = recovery, down = slam/crouch special, side/neutral = side special.
     if up:
-        player[PVY] = -9
-        player[PVX] = player[PFACING] * 2
+        player[PSPECDIR] = SPEC_UP
+
+        if char["id"] == "nyra":
+            player[PVY] = -13
+            player[PVX] = player[PFACING] * 2
+        elif char["id"] == "brugo":
+            player[PVY] = -10
+            player[PVX] = player[PFACING]
+        else:
+            player[PVY] = -12
+            player[PVX] = player[PFACING] * 2
 
     elif down:
-        player[PVY] = 2
+        player[PSPECDIR] = SPEC_DOWN
+
+        if player[PONGROUND] == 1:
+            player[PVY] = 0
+        else:
+            player[PVY] = 8
+
         player[PVX] = 0
 
     else:
+        player[PSPECDIR] = SPEC_SIDE
+
         if char["id"] == "kael":
-            player[PVX] = player[PFACING] * 6
+            player[PVX] = player[PFACING] * 7
         elif char["id"] == "nyra":
-            player[PVX] = player[PFACING] * 8
+            player[PVX] = player[PFACING] * 9
         else:
-            player[PVX] = player[PFACING] * 3
+            player[PVX] = player[PFACING] * 4
 
 
 def tick_timers(player):
@@ -579,6 +643,7 @@ def tick_timers(player):
         player[PACTION] = ACTION_IDLE
         player[PSPECDONE] = 0
         player[PSPECTIMER] = 0
+        player[PSPECDIR] = SPEC_SIDE
 
     if player[PACTION] == ACTION_HURT and player[PHITSTUN] <= 0:
         player[PACTION] = ACTION_IDLE
@@ -590,23 +655,39 @@ def apply_special_motion(player):
     if player[PACTION] != ACTION_SPECIAL:
         return
 
-    # Kael: controlled sword dash.
+    spec_dir = player[PSPECDIR]
+
+    if spec_dir == SPEC_UP:
+        if player[PTIMER] > 8:
+            if char["id"] == "nyra":
+                player[PVY] = -8
+            elif char["id"] == "brugo":
+                player[PVY] = -5
+            else:
+                player[PVY] = -7
+
+        return
+
+    if spec_dir == SPEC_DOWN:
+        if player[PONGROUND] == 0:
+            player[PVY] += 2
+        player[PVX] = 0
+        return
+
     if char["id"] == "kael":
         if player[PTIMER] > 5:
             if player[PVX] == 0:
-                player[PVX] = player[PFACING] * 5
+                player[PVX] = player[PFACING] * 6
         else:
             player[PVX] = 0
 
-    # Nyra: faster burst.
     elif char["id"] == "nyra":
         if player[PTIMER] > 6:
             if player[PVX] == 0:
-                player[PVX] = player[PFACING] * 7
+                player[PVX] = player[PFACING] * 8
         else:
             player[PVX] = 0
 
-    # Brugo: heavy, stops after first push.
     else:
         if player[PTIMER] < 8:
             player[PVX] = 0
@@ -617,7 +698,6 @@ def apply_player_input(player, left, right, up, down, attack, special):
     speed = char["speed"]
     jump_power = char["jump"]
 
-    # During spawn hover, movement starts the fall.
     if player[PSPAWNWAIT] > 0:
         if left or right or up or down:
             player[PSPAWNWAIT] = 0
@@ -712,7 +792,6 @@ def collide_platforms(player, old_y, map_index):
 def update_physics(player, player_num, map_index):
     old_y = player[PY]
 
-    # Spawn hover.
     if player[PSPAWNWAIT] > 0:
         player[PSPAWNWAIT] -= 1
 
@@ -733,7 +812,7 @@ def update_physics(player, player_num, map_index):
     player[PX] += player[PVX]
     player[PY] += player[PVY]
 
-    player[PX] = clamp(player[PX], -25, SCREEN_W + 25)
+    player[PX] = clamp(player[PX], -35, WORLD_W + 35)
 
     collide_platforms(player, old_y, map_index)
 
@@ -770,18 +849,16 @@ def predict_remote_physics(player, map_index):
     player[PX] += player[PVX]
     player[PY] += player[PVY]
 
-    player[PX] = clamp(player[PX], -25, SCREEN_W + 25)
+    player[PX] = clamp(player[PX], -35, WORLD_W + 35)
 
     collide_platforms(player, old_y, map_index)
 
 
 def player_rect(player):
-    # Crouching makes the hurtbox lower/smaller.
-    # This lets crouch avoid some high attacks.
     if player[PCROUCH] == 1:
-        return [player[PX], player[PY] + 4, PLAYER_W, PLAYER_H - 4]
+        return [player[PX], player[PY] + 9, PLAYER_W, PLAYER_H - 9]
 
-    return [player[PX], player[PY] - 3, PLAYER_W, PLAYER_H + 3]
+    return [player[PX], player[PY], PLAYER_W, PLAYER_H]
 
 
 def attack_active(player):
@@ -792,10 +869,11 @@ def special_active(player):
     if player[PACTION] != ACTION_SPECIAL:
         return False
 
-    char = get_character(player[PCHAR])
+    if player[PSPECDIR] == SPEC_UP:
+        return player[PTIMER] <= 14 and player[PTIMER] >= 5
 
-    if char["id"] == "brugo":
-        return player[PTIMER] <= 11 and player[PTIMER] >= 4
+    if player[PSPECDIR] == SPEC_DOWN:
+        return player[PTIMER] <= 12 and player[PTIMER] >= 3
 
     return player[PTIMER] <= 13 and player[PTIMER] >= 5
 
@@ -804,35 +882,50 @@ def attack_rect(player):
     x = player[PX]
     y = player[PY]
 
-    # High-ish sword hitbox. Crouch can avoid some of this.
     if player[PFACING] >= 0:
-        return [x + PLAYER_W, y - 2, 14, 7]
+        return [x + PLAYER_W, y + 2, 18, 7]
     else:
-        return [x - 14, y - 2, 14, 7]
+        return [x - 18, y + 2, 18, 7]
 
 
 def special_rect(player):
     x = player[PX]
     y = player[PY]
     char = get_character(player[PCHAR])
+    spec_dir = player[PSPECDIR]
+
+    if spec_dir == SPEC_UP:
+        if char["id"] == "brugo":
+            return [x - 6, y - 18, PLAYER_W + 12, 28]
+        elif char["id"] == "nyra":
+            return [x - 10, y - 24, PLAYER_W + 20, 34]
+        else:
+            return [x - 8, y - 22, PLAYER_W + 16, 32]
+
+    if spec_dir == SPEC_DOWN:
+        if char["id"] == "brugo":
+            return [x - 30, y + PLAYER_H - 5, PLAYER_W + 60, 12]
+        elif char["id"] == "nyra":
+            return [x - 20, y + PLAYER_H - 4, PLAYER_W + 40, 10]
+        else:
+            return [x - 22, y + PLAYER_H - 5, PLAYER_W + 44, 10]
 
     if char["id"] == "kael":
         if player[PFACING] >= 0:
-            return [x + PLAYER_W, y, 22, 12]
+            return [x + PLAYER_W, y + 1, 30, 14]
         else:
-            return [x - 22, y, 22, 12]
+            return [x - 30, y + 1, 30, 14]
 
     if char["id"] == "nyra":
         if player[PFACING] >= 0:
-            return [x + PLAYER_W, y - 1, 26, 14]
+            return [x + PLAYER_W, y, 34, 16]
         else:
-            return [x - 26, y - 1, 26, 14]
+            return [x - 34, y, 34, 16]
 
-    # Brugo shockwave is low, so crouch will not avoid it.
     if player[PFACING] >= 0:
-        return [x + PLAYER_W, y + 7, 28, 8]
+        return [x + PLAYER_W, y + 5, 26, 12]
     else:
-        return [x - 28, y + 7, 28, 8]
+        return [x - 26, y + 5, 26, 12]
 
 
 def check_attack_hit(attacker, victim):
@@ -873,6 +966,12 @@ def create_hit_event(attacker, victim, next_hit_id, hit_type):
     if hit_type == "special":
         damage = char["special_damage"]
         base_kb = char["special_knockback"]
+
+        if attacker[PSPECDIR] == SPEC_UP:
+            base_kb -= 1
+
+        if attacker[PSPECDIR] == SPEC_DOWN:
+            base_kb += 1
     else:
         damage = char["attack_damage"]
         base_kb = char["attack_knockback"]
@@ -887,58 +986,111 @@ def create_hit_event(attacker, victim, next_hit_id, hit_type):
     else:
         kbx = -kb
 
-    if hit_type == "special" and char["id"] == "brugo":
-        kby = -5
+    if hit_type == "special" and attacker[PSPECDIR] == SPEC_UP:
+        kby = -7
+        kbx = kbx // 2
+
+    elif hit_type == "special" and attacker[PSPECDIR] == SPEC_DOWN:
+        kby = -2
+        kbx = kbx + attacker[PFACING] * 2
+
     elif hit_type == "special":
         kby = -4
+
     else:
         kby = -3
 
     return next_hit_id, damage, kbx, kby
 
 
-def draw_action_box(oled, player):
-    if attack_active(player):
-        r = attack_rect(player)
-        draw_rect(oled, r[0], r[1], r[2], r[3], WHITE)
+def draw_wind_side(oled, sx, sy, facing, length):
+    if facing >= 0:
+        tip = sx + length
 
-    if special_active(player):
-        r = special_rect(player)
-        draw_rect(oled, r[0], r[1], r[2], r[3], WHITE)
+        draw_line(oled, tip, sy, tip - 8, sy - 5, WHITE)
+        draw_line(oled, tip, sy, tip - 8, sy + 5, WHITE)
+
+        oled.hline(sx + 4, sy - 3, 10, WHITE)
+        oled.hline(sx + 1, sy, 14, WHITE)
+        oled.hline(sx + 4, sy + 3, 10, WHITE)
+
+    else:
+        tip = sx - length
+
+        draw_line(oled, tip, sy, tip + 8, sy - 5, WHITE)
+        draw_line(oled, tip, sy, tip + 8, sy + 5, WHITE)
+
+        oled.hline(sx - 14, sy - 3, 10, WHITE)
+        oled.hline(sx - 15, sy, 14, WHITE)
+        oled.hline(sx - 14, sy + 3, 10, WHITE)
 
 
-def draw_player(oled, player, label):
-    x = int(player[PX])
-    y = int(player[PY])
-    facing = int(player[PFACING])
-    char = get_character(player[PCHAR])
-    action = int(player[PACTION])
+def draw_wind_up(oled, sx, sy):
+    draw_line(oled, sx, sy - 24, sx - 6, sy - 14, WHITE)
+    draw_line(oled, sx, sy - 24, sx + 6, sy - 14, WHITE)
+    oled.vline(sx, sy - 22, 18, WHITE)
+    oled.vline(sx - 4, sy - 17, 10, WHITE)
+    oled.vline(sx + 4, sy - 17, 10, WHITE)
 
-    if x < -35 or x > SCREEN_W + 35:
+
+def draw_wind_down(oled, sx, sy):
+    oled.hline(sx - 22, sy + 4, 44, WHITE)
+    oled.hline(sx - 16, sy + 8, 32, WHITE)
+    draw_line(oled, sx - 24, sy + 4, sx - 30, sy, WHITE)
+    draw_line(oled, sx + 24, sy + 4, sx + 30, sy, WHITE)
+
+
+def draw_action_effect(oled, player, camera_x):
+    sx = world_to_screen_x(player[PX] + PLAYER_W // 2, camera_x)
+    sy = player[PY] + PLAYER_H // 2
+
+    if sx < -40 or sx > SCREEN_W + 40:
         return
 
-    # Flash during respawn invincibility.
+    if attack_active(player):
+        draw_wind_side(oled, sx, sy, player[PFACING], 20)
+
+    elif special_active(player):
+        if player[PSPECDIR] == SPEC_UP:
+            draw_wind_up(oled, sx, sy)
+
+        elif player[PSPECDIR] == SPEC_DOWN:
+            draw_wind_down(oled, sx, player[PY] + PLAYER_H)
+
+        else:
+            draw_wind_side(oled, sx, sy, player[PFACING], 30)
+
+
+def draw_player(oled, player, label, camera_x):
+    screen_x = world_to_screen_x(player[PX] + PLAYER_W // 2, camera_x)
+    base_y = int(player[PY] + PLAYER_H - 6)
+
+    if screen_x < -35 or screen_x > SCREEN_W + 35:
+        return
+
     if player[PINVINCIBLE] > 0:
         if (time.ticks_ms() // 100) % 2 == 0:
             return
 
+    char = get_character(player[PCHAR])
+    action = int(player[PACTION])
     anim_tick = time.ticks_ms() // 40
 
-    draw_fighter(
-        oled,
-        char["id"],
-        x,
-        y,
-        facing,
-        action,
-        anim_tick,
-        WHITE
-    )
+    # Draw twice to make the stick-figure thicker/bigger.
+    draw_fighter(oled, char["id"], screen_x, base_y, player[PFACING], action, anim_tick, WHITE)
+    draw_fighter(oled, char["id"], screen_x + 1, base_y, player[PFACING], action, anim_tick, WHITE)
 
-    oled.text(label, x, y - 18, WHITE)
+    oled.text(label, screen_x - 3, player[PY] - 10, WHITE)
 
 
 def draw_game(oled, role, p1, p2, net_ok, map_index):
+    if role == "host":
+        local_player = p1
+    else:
+        local_player = p2
+
+    camera_x = get_camera_x(local_player)
+
     oled.fill(BLACK)
 
     p1_char = get_character(p1[PCHAR])
@@ -960,19 +1112,22 @@ def draw_game(oled, role, p1, p2, net_ok, map_index):
     m = get_map(map_index)
 
     for p in m["platforms"]:
-        oled.fill_rect(p[0], p[1], p[2], p[3], WHITE)
+        sx = world_to_screen_x(p[0], camera_x)
+        oled.fill_rect(sx, p[1], p[2], p[3], WHITE)
 
-    draw_action_box(oled, p1)
-    draw_action_box(oled, p2)
+    draw_action_effect(oled, p1, camera_x)
+    draw_action_effect(oled, p2, camera_x)
 
-    draw_player(oled, p1, "1")
-    draw_player(oled, p2, "2")
+    draw_player(oled, p1, "1", camera_x)
+    draw_player(oled, p2, "2", camera_x)
 
     if p1[PBLASTTIMER] > 0:
-        draw_blast(oled, p1[PBLASTX], p1[PBLASTY], 12 - p1[PBLASTTIMER], WHITE)
+        bx = world_to_screen_x(p1[PBLASTX], camera_x)
+        draw_blast(oled, bx, p1[PBLASTY], 12 - p1[PBLASTTIMER], WHITE)
 
     if p2[PBLASTTIMER] > 0:
-        draw_blast(oled, p2[PBLASTX], p2[PBLASTY], 12 - p2[PBLASTTIMER], WHITE)
+        bx = world_to_screen_x(p2[PBLASTX], camera_x)
+        draw_blast(oled, bx, p2[PBLASTY], 12 - p2[PBLASTTIMER], WHITE)
 
     oled.show()
 
