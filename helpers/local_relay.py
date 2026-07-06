@@ -3,6 +3,7 @@ import socket
 import time
 
 LOCAL_SSID = "PixelForgeLocal"
+LOCAL_PASSWORD = "pixelforge"
 LOCAL_HOST_IP = "192.168.4.1"
 LOCAL_PORT = 5050
 
@@ -35,26 +36,28 @@ class LocalSocketClient:
 
         try:
             ap.active(False)
-            time.sleep(0.8)
+            time.sleep(1)
         except:
             pass
 
         ap.active(True)
-        time.sleep(0.5)
+        time.sleep(1)
 
-        # Try to rename the hotspot.
-        # If the Pico ignores this, it may still show as PICO####.
+        # Try to make a named WPA2 network.
+        # If the Pico ignores the name, it may still show as PICO####.
         try:
-            ap.config(essid=LOCAL_SSID)
+            ap.config(essid=LOCAL_SSID, password=LOCAL_PASSWORD)
         except:
-            pass
+            try:
+                ap.config(ssid=LOCAL_SSID, password=LOCAL_PASSWORD)
+            except:
+                pass
 
         try:
             ap.ifconfig((LOCAL_HOST_IP, "255.255.255.0", LOCAL_HOST_IP, LOCAL_HOST_IP))
         except:
             pass
 
-        # Give the hotspot time to fully appear.
         time.sleep(5)
 
         self.sock = socket.socket()
@@ -79,11 +82,10 @@ class LocalSocketClient:
         wlan = network.WLAN(network.STA_IF)
 
         wlan.active(False)
-        time.sleep(0.8)
+        time.sleep(1)
         wlan.active(True)
         time.sleep(1)
 
-        # Look for either PixelForgeLocal or the Pico's default PICO#### hotspot.
         target_ssid = None
         scan_start = time.ticks_ms()
 
@@ -125,16 +127,34 @@ class LocalSocketClient:
 
         time.sleep(0.5)
 
-        # Connect to the network we actually found.
-        wlan.connect(target_ssid)
+        # Try password first.
+        wlan.connect(target_ssid, LOCAL_PASSWORD)
 
         start = time.ticks_ms()
 
         while not wlan.isconnected():
-            if time.ticks_diff(time.ticks_ms(), start) > 15000:
-                raise Exception("wifi 110 " + target_ssid[:8])
+            if time.ticks_diff(time.ticks_ms(), start) > 12000:
+                break
 
             time.sleep(0.2)
+
+        # If password failed, try open network.
+        if not wlan.isconnected():
+            try:
+                wlan.disconnect()
+            except:
+                pass
+
+            time.sleep(0.5)
+            wlan.connect(target_ssid)
+
+            start = time.ticks_ms()
+
+            while not wlan.isconnected():
+                if time.ticks_diff(time.ticks_ms(), start) > 12000:
+                    raise Exception("wifi 110 " + target_ssid[:8])
+
+                time.sleep(0.2)
 
         time.sleep(1)
 
