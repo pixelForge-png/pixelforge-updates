@@ -169,7 +169,7 @@ def make_title(game_id):
 
     return " ".join(title_parts)
 
-def list_local_games(include_dev=False, mode="singleplayer"):
+def list_local_games(include_dev=False, mode="singleplayer", mp_mode=None):
     ensure_folders()
 
     game_info = settings_manager.load_game_info()
@@ -194,6 +194,15 @@ def list_local_games(include_dev=False, mode="singleplayer"):
             if game_mode != mode:
                 continue
 
+            if mode == "multiplayer" and mp_mode != None:
+                network = info.get("network", "local")
+            
+                if mp_mode == "online" and network != "online":
+                    continue
+            
+                # Local shows both local-only games and online-capable games.
+                # So no filter is needed for mp_mode == "local".
+
             channel = info.get("channel", "release")
             is_dev_game = (
                 game_id.startswith("test") or
@@ -212,6 +221,7 @@ def list_local_games(include_dev=False, mode="singleplayer"):
                 "title": info.get("title", title),
                 "display_version": info.get("display_version", "?"),
                 "mode": game_mode,
+                "network": info.get("network", "local"),
                 "file": "games/" + filename,
                 "module": "games." + game_id,
                 "version": 0
@@ -709,7 +719,7 @@ def multiplayer_host_menu(mp_mode="online"):
         screen_status("LOCAL HOST", "PICK GAME", "JOIN WAITS", CYAN)
         time.sleep(1)
 
-    games = list_local_games(mode="multiplayer")
+    games = list_local_games(mode="multiplayer", mp_mode=mp_mode)
     index = 0
     last_move = time.ticks_ms()
 
@@ -731,7 +741,15 @@ def multiplayer_host_menu(mp_mode="online"):
             oled.text(">", 150, 36, YELLOW)
 
             center_text(game["title"][:18], 24, WHITE)
-            center_text("v" + game.get("display_version", "?"), 40, CYAN)
+            if mp_mode == "online":
+                center_text("ONLINE v" + game.get("display_version", "?"), 40, CYAN)
+            else:
+                network = game.get("network", "local")
+            
+                if network == "online":
+                    center_text("LOCAL/ONLINE", 40, CYAN)
+                else:
+                    center_text("LOCAL ONLY", 40, CYAN)
             center_text("GREEN START", 58, GREEN)
 
         oled.text("Y=Back", 2, 70, GRAY)
@@ -827,7 +845,7 @@ def multiplayer_join_menu(mp_mode="online"):
             run_multiplayer_game(game, "joiner", "LOCAL", mp_mode)
 
 def local_join_game_select():
-    games = list_local_games(mode="multiplayer")
+    games = list_local_games(mode="multiplayer", mp_mode="local")
     index = 0
     last_move = time.ticks_ms()
 
@@ -924,7 +942,7 @@ def wait_for_host_game(code, mp_mode="online"):
         time.sleep(0.03)
 
 def find_game_by_id(game_id):
-    games = list_local_games(mode="multiplayer")
+    games = list_local_games(mode="multiplayer", mp_mode=mp_mode)
 
     for game in games:
         if game["id"] == game_id:
