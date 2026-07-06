@@ -8,6 +8,15 @@ import settings_manager
 import update_manager
 import keyboard
 
+import os
+
+def file_exists(path):
+    try:
+        os.stat(path)
+        return True
+    except OSError:
+        return False
+
 try:
     from helpers import online_relay
 except:
@@ -1069,6 +1078,10 @@ def home_screen():
             settings_menu()
 
 ensure_folders()
+
+if file_exists("birthday_card.py"):
+    import birthday_card
+    birthday_card.show_birthday_card_once(display, screen_w=160, screen_h=80)
 
 screen_status("PIXELFORGE", "BOOTING", "OS", CYAN)
 time.sleep(1)
