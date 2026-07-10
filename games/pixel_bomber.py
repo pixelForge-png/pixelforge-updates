@@ -528,7 +528,7 @@ def main(oled_from_launcher, controls, settings):
             elif right and player_x < SCREEN_W - 8:
                 player_x += player_speed
 
-            if up and:
+            if up:
                 player_y -= player_speed
             elif down and player_y < SCREEN_H - 8:
                 player_y += player_speed
