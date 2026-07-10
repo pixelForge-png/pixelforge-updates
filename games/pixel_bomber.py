@@ -265,6 +265,26 @@ ghost_boss = [
     "G0G00G00G00G0G0G",
     "0G0G00G00G00G0G0"
 ]
+facing_right = [
+    "110",
+    "001",
+    "110"
+]
+facing_left = [
+    "011",
+    "100",
+    "011"
+]
+facing_up = [
+    "010",
+    "101",
+    "101"
+]
+facing_up = [
+    "101",
+    "101",
+    "010"
+]
 
 all_upgrades = [
     # Level 100 mode: many more upgrade caps so upgrades keep appearing.
@@ -519,19 +539,27 @@ def main(oled_from_launcher, controls, settings):
         player_y = 8
         score = 0
         invincible = 0
+        facing = None
 
         while True:
+            oled.fill(SPACE_BLACK)
             left, right, up, down = controls["joystick"]()
 
             if left and player_x > 0:
                 player_x -= player_speed
+                facing = left
             elif right and player_x < SCREEN_W - 8:
                 player_x += player_speed
+                facing = right
 
-            if up:
+            if up and player_y < 0:
                 player_y -= player_speed
+                facing = up
             elif down and player_y < SCREEN_H - 8:
                 player_y += player_speed
+                facing = down
+            if facing = down:
+                draw_sprite(facing_down, player_x - 3, player_y + 9)
             oled.text("*", player_x, player_y, PURPLE)
             
             show_display(oled)
