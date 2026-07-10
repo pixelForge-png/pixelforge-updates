@@ -521,7 +521,9 @@ def main(oled_from_launcher, controls, settings):
         invincible = 0
 
         while True:
-            oled.text("*", player_x, player_y, )
+            
+            oled.text("*", player_x, player_y, PURPLE)
+            
             show_display(oled)
 
 
