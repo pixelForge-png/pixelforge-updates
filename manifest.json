@@ -36,7 +36,19 @@
       "mode": "multiplayer",
       "network": "local",
       "url": "https://raw.githubusercontent.com/pixelForge-png/pixelforge-updates/main/games/forge_fighters.py"
-    }      
+    },
+    {
+      "id": "pixel_bomber",
+      "title": "Pixel Bomber",
+      "file": "games/pixel_bomber.py",
+      "module": "games.pixel_bomber",
+      "version": 1,
+      "display_version": "1.0",
+      "channel": "release",
+      "mode": "singleplayer",
+      "network": "None",
+      "url": "https://raw.githubusercontent.com/pixelForge-png/pixelforge-updates/main/games/pixel_bomber.py"
+    } 
   ],
   "helpers": [
     {
