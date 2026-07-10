@@ -521,7 +521,17 @@ def main(oled_from_launcher, controls, settings):
         invincible = 0
 
         while True:
-            
+            left, right, up, down = controls["joystick"]()
+
+            if left and player_x > 0:
+                player_x -= player_speed
+            elif right and player_x < SCREEN_W - 8:
+                player_x += player_speed
+
+            if up and:
+                player_y -= player_speed
+            elif down and player_y < SCREEN_H - 8:
+                player_y += player_speed
             oled.text("*", player_x, player_y, PURPLE)
             
             show_display(oled)
