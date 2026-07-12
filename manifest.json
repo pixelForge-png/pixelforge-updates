@@ -48,6 +48,18 @@
       "mode": "singleplayer",
       "network": "None",
       "url": "https://raw.githubusercontent.com/pixelForge-png/pixelforge-updates/main/games/pixel_bomber.py"
+    },
+    {
+      "id": "pixel_adventure",
+      "title": "pixel_adventure",
+      "file": "games/pixel_adventure.py",
+      "module": "games.pixel_adventure",
+      "version": 1,
+      "display_version": "1.0",
+      "channel": "dev",
+      "mode": "singleplayer",
+      "network": "None",
+      "url": "https://raw.githubusercontent.com/pixelForge-png/pixelforge-updates/main/games/pixel_adventure.py"
     } 
   ],
   "helpers": [
@@ -130,6 +142,16 @@
       "display_version": "1.0",
       "channel": "release",
       "url": "https://raw.githubusercontent.com/pixelForge-png/pixelforge-updates/main/helpers/forge_sprites.py"
+    },
+    {
+      "id": "pixel_adventure_helpers",
+      "title": "None",
+      "file": "helpers/pixel_adventure_helpers.py",
+      "module": "helpers.pixel_adventure_helpers",
+      "version": 1,
+      "display_version": "1.0",
+      "channel": "dev",
+      "url": "https://raw.githubusercontent.com/pixelForge-png/pixelforge-updates/main/helpers/pixel_adventure_helpers.py"
     }
   ],
   "system_files": [
