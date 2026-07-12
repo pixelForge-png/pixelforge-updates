@@ -18,7 +18,7 @@ map = [
     "w........w.........w",
     "wwww..wwww....wwwwww",
     "w..................w",
-    "w..wwww......cccc..w",
+    "w..wwww..m...cccc..w",
     "w..w............w..w",
     "w.......ccc........w",
     "wwwwwwwwwwwwwwwwwwww"
@@ -67,13 +67,46 @@ ground = [
     "DDDDDDD9",
     "DDDDDDDD"
 ]
+
+monster = [
+    "11111111",
+    "11111111",
+    "11111111",
+    "11111111",
+    "11111111",
+    "11111111",
+    "11111111",
+    "11111111"
+]
+facing_up = [
+    "010",
+    "101",
+    "101"
+]
+facing_down = [
+    "101",
+    "101",
+    "010"
+]
+facing_left = [
+    "011",
+    "100",
+    "011"
+]
+facing_right = [
+    "110",
+    "001",
+    "110"
+]
 TILE_SIZE = 8
 player_speed = 2
 
 walls = []
+enemise = []
 
 player_x = 0
 player_y = 0
+
 
 
 def load_map():
@@ -91,6 +124,9 @@ def load_map():
 
             elif tile == "c":
                 walls.append([world_x, world_y])
+
+            elif tile == "m":
+                monsters.append([world_x, world_y, 3])
 
             elif tile == "@":
                 player_x = world_x
@@ -131,6 +167,14 @@ def draw_map_tile(oled, tile_x, tile_y):
             screen_y
         )
 
+    elif tile == "m":
+        draw_color_sprite(
+            oled,
+            monster,
+            screen_x,
+            screen_y
+        )
+
     else:
         # Both "." and "@" have ground underneath.
         draw_color_sprite(
@@ -159,6 +203,8 @@ def restore_player_area(oled, x, y):
                 0 <= tile_x < len(map[tile_y])
             ):
                 draw_map_tile(oled, tile_x, tile_y)
+
+facing = up
 
 
 def main(oled, controls, settings):
@@ -189,19 +235,35 @@ def main(oled, controls, settings):
 
         if left:
             new_x -= player_speed
+            facing = left
         elif right:
             new_x += player_speed
+            facing = right
 
         if up:
             new_y -= player_speed
+            facing = up
         elif down:
             new_y += player_speed
+            facing = down
 
         if not touches_wall(new_x, player_y):
             player_x = new_x
 
         if not touches_wall(player_x, new_y):
             player_y = new_y
+
+        if facing = left:
+            draw_color_sprite(oled, facing_left, player_x - 4, player_y + 2)
+
+        if facing = right:
+            draw_color_sprite(oled, facing_left, player_x + 9, player_y + 2)
+
+        if facing = up:
+            draw_color_sprite(oled, facing_left, player_x + 2, player_y - 4)
+
+        if facing = down:
+            draw_color_sprite(oled, facing_left, player_x + 2, player_y + 9)
 
         # Only redraw if the player actually moved.
         if player_x != old_x or player_y != old_y:
