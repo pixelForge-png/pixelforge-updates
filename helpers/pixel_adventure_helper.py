@@ -65,3 +65,95 @@ GAME_PALETTE = {
     "G": BOSS_GHOST,
     "H": HEALTH_GREEN,
 }
+
+def show_display(display):
+    if hasattr(display, "show"):
+        display.show()
+
+def draw_text(display, text, x, y, color=WHITE):
+    try:
+        display.text(text, x, y, color)
+    except TypeError:
+        display.text(text, x, y)
+
+def center_text_x(display, text, y, color=WHITE, screen_w=SCREEN_W):
+    x = (screen_w - len(text) * 8) // 2
+    draw_text(display, text, x, y, color)
+
+def safe_pixel(display, x, y, color, screen_w=SCREEN_W, screen_h=SCREEN_H):
+    if 0 <= x < screen_w and 0 <= y < screen_h:
+        display.pixel(x, y, color)
+
+def draw_sprite(display, sprite, x, y, color=WHITE, screen_w=SCREEN_W, screen_h=SCREEN_H):
+    for row_index, row in enumerate(sprite):
+        for col_index, pixel in enumerate(row):
+            if pixel == "1":
+                safe_pixel(display, x + col_index, y + row_index, color, screen_w, screen_h)
+
+def draw_color_sprite(display, sprite, x, y, palette=GAME_PALETTE, transparent="0", screen_w=SCREEN_W, screen_h=SCREEN_H):
+    for row_index, row in enumerate(sprite):
+        for col_index, pixel in enumerate(row):
+            if pixel != transparent and pixel in palette:
+                color = palette[pixel]
+                if color is not None:
+                    safe_pixel(display, x + col_index, y + row_index, color, screen_w, screen_h)
+
+# -----------------------------
+# Tiny text
+# -----------------------------
+tiny_font = {
+    "A": ["010", "101", "111", "101", "101"],
+    "B": ["110", "101", "110", "101", "110"],
+    "C": ["011", "100", "100", "100", "011"],
+    "D": ["110", "101", "101", "101", "110"],
+    "E": ["111", "100", "110", "100", "111"],
+    "F": ["111", "100", "110", "100", "100"],
+    "G": ["011", "100", "101", "101", "011"],
+    "H": ["101", "101", "111", "101", "101"],
+    "I": ["111", "010", "010", "010", "111"],
+    "J": ["001", "001", "001", "101", "010"],
+    "K": ["101", "101", "110", "101", "101"],
+    "L": ["100", "100", "100", "100", "111"],
+    "M": ["101", "111", "111", "101", "101"],
+    "N": ["101", "111", "111", "111", "101"],
+    "O": ["111", "101", "101", "101", "111"],
+    "P": ["110", "101", "110", "100", "100"],
+    "Q": ["111", "101", "101", "111", "001"],
+    "R": ["110", "101", "110", "101", "101"],
+    "S": ["011", "100", "111", "001", "110"],
+    "T": ["111", "010", "010", "010", "010"],
+    "U": ["101", "101", "101", "101", "111"],
+    "V": ["101", "101", "101", "101", "010"],
+    "W": ["101", "101", "111", "111", "101"],
+    "X": ["101", "101", "010", "101", "101"],
+    "Y": ["101", "101", "010", "010", "010"],
+    "Z": ["111", "001", "010", "100", "111"],
+    "0": ["111", "101", "101", "101", "111"],
+    "1": ["010", "110", "010", "010", "111"],
+    "2": ["111", "001", "111", "100", "111"],
+    "3": ["111", "001", "111", "001", "111"],
+    "4": ["101", "101", "111", "001", "001"],
+    "5": ["111", "100", "111", "001", "111"],
+    "6": ["111", "100", "111", "101", "111"],
+    "7": ["111", "001", "010", "010", "010"],
+    "8": ["111", "101", "111", "101", "111"],
+    "9": ["111", "101", "111", "001", "111"],
+    " ": ["000", "000", "000", "000", "000"],
+    "/": ["001", "001", "010", "100", "100"],
+    "-": ["000", "000", "111", "000", "000"],
+    ":": ["000", "010", "000", "010", "000"],
+    "!": ["010", "010", "010", "000", "010"],
+    "?": ["111", "001", "010", "000", "010"],
+    "=": ["000", "111", "000", "111", "000"],
+}
+
+def draw_tiny_char(display, char, x, y, color=WHITE):
+    char = char.upper()
+    if char in tiny_font:
+        draw_sprite(display, tiny_font[char], x, y, color)
+    else:
+        draw_sprite(display, tiny_font["?"], x, y, color)
+
+def draw_tiny_text(display, text, x, y, color=WHITE):
+    for i in range(len(text)):
+        draw_tiny_char(display, text[i], x + i * 4, y, color)
