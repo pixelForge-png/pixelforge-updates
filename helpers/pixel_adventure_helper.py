@@ -157,3 +157,19 @@ def draw_tiny_char(display, char, x, y, color=WHITE):
 def draw_tiny_text(display, text, x, y, color=WHITE):
     for i in range(len(text)):
         draw_tiny_char(display, text[i], x + i * 4, y, color)
+
+def joystick_direction(joy_x, joy_y, low=22000, high=43000):
+    x = joy_x.read_u16()
+    y = joy_y.read_u16()
+    right = x < low
+    left = x > high
+    down = y > high
+    up = y < low
+    return left, right, up, down, x, y
+
+def joystick_pressed(joy_sw):
+    return joy_sw.value() == 0
+
+def wait_for_joystick_release(joy_sw):
+    while joy_sw.value() == 0:
+        time.sleep(0.01)
