@@ -231,6 +231,7 @@ def list_local_games(include_dev=False, mode="singleplayer", mp_mode=None):
                 "display_version": info.get("display_version", "?"),
                 "mode": game_mode,
                 "network": info.get("network", "local"),
+                "channel": channel,
                 "file": "games/" + filename,
                 "module": "games." + game_id,
                 "version": 0
@@ -280,7 +281,7 @@ def list_test_games():
     test_games = []
 
     for game in games:
-        if game["id"].startswith("test") or game["id"].startswith("dev"):
+        if game.get("channel", "release") == "dev":
             test_games.append(game)
 
     return test_games
