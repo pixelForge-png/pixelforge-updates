@@ -106,6 +106,7 @@ enemise = []
 
 player_x = 0
 player_y = 0
+monsters = []
 
 
 
@@ -253,16 +254,16 @@ def main(oled, controls, settings):
         if not touches_wall(player_x, new_y):
             player_y = new_y
 
-        if facing = left:
+        if facing == left:
             draw_color_sprite(oled, facing_left, player_x - 4, player_y + 2)
 
-        if facing = right:
+        if facing == right:
             draw_color_sprite(oled, facing_left, player_x + 9, player_y + 2)
 
-        if facing = up:
+        if facing == up:
             draw_color_sprite(oled, facing_left, player_x + 2, player_y - 4)
 
-        if facing = down:
+        if facing == down:
             draw_color_sprite(oled, facing_left, player_x + 2, player_y + 9)
 
         # Only redraw if the player actually moved.
