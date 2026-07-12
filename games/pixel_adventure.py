@@ -57,15 +57,15 @@ for tile_y, row in enumerate(map):
         world_y = tile_y * TILE_SIZE
 
         if tile == "w":
-            draw_color_sprite(wall, world_x, world_y)
+            draw_color_sprite(display, wall, world_x, world_y)
             pass
 
         elif tile == ".":
-            draw_color_sprite(ground, world_x, world_y)
+            draw_color_sprite(display, ground, world_x, world_y)
             pass
 
         elif tile == "@":
-            draw_color_sprite(player, world_x, world_y)
+            draw_color_sprite(display, player, world_x, world_y)
             player_x = world_x
             player_y = world_y
 
