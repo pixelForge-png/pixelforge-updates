@@ -205,7 +205,7 @@ def restore_player_area(oled, x, y):
             ):
                 draw_map_tile(oled, tile_x, tile_y)
 
-facing = up
+facing = "up"
 
 
 def main(oled, controls, settings):
@@ -236,17 +236,17 @@ def main(oled, controls, settings):
 
         if left:
             new_x -= player_speed
-            facing = left
+            facing = "left"
         elif right:
             new_x += player_speed
-            facing = right
+            facing = "right"
 
         if up:
             new_y -= player_speed
-            facing = up
+            facing = "up"
         elif down:
             new_y += player_speed
-            facing = down
+            facing = "down"
 
         if not touches_wall(new_x, player_y):
             player_x = new_x
@@ -254,16 +254,16 @@ def main(oled, controls, settings):
         if not touches_wall(player_x, new_y):
             player_y = new_y
 
-        if facing == left:
+        if facing == "left":
             draw_color_sprite(oled, facing_left, player_x - 4, player_y + 2)
 
-        if facing == right:
+        if facing == "right":
             draw_color_sprite(oled, facing_left, player_x + 9, player_y + 2)
 
-        if facing == up:
+        if facing == "up":
             draw_color_sprite(oled, facing_left, player_x + 2, player_y - 4)
 
-        if facing == down:
+        if facing == "down":
             draw_color_sprite(oled, facing_left, player_x + 2, player_y + 9)
 
         # Only redraw if the player actually moved.
