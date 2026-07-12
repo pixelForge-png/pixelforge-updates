@@ -12,9 +12,16 @@ from helpers.pixel_adventure_helper import (
 
 
 map = [
-  ".......w",
-  "@.....ww",
-  ".......w"
+    "wwwwwwwwwwwwwwwwwwww",
+    "w@.......w.........w",
+    "w..ccc...w..ccc....w",
+    "w........w.........w",
+    "wwww..wwww....wwwwww",
+    "w..................w",
+    "w..wwww......cccc..w",
+    "w..w............w..w",
+    "w.......ccc........w",
+    "wwwwwwwwwwwwwwwwwwww"
 ]
 
 wall = [
