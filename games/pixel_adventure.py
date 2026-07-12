@@ -51,25 +51,27 @@ ground = [
 
 TILE_SIZE = 8
 
-for tile_y, row in enumerate(map):
-    for tile_x, tile in enumerate(row):
-        world_x = tile_x * TILE_SIZE
-        world_y = tile_y * TILE_SIZE
+def main():
 
-        if tile == "w":
-            draw_color_sprite(display, wall, world_x, world_y)
-            pass
-
-        elif tile == ".":
-            draw_color_sprite(display, ground, world_x, world_y)
-            pass
-
-        elif tile == "@":
-            draw_color_sprite(display, player, world_x, world_y)
-            player_x = world_x
-            player_y = world_y
-
-show_display(oled)
+    for tile_y, row in enumerate(map):
+        for tile_x, tile in enumerate(row):
+            world_x = tile_x * TILE_SIZE
+            world_y = tile_y * TILE_SIZE
+    
+            if tile == "w":
+                draw_color_sprite(display, wall, world_x, world_y)
+                pass
+    
+            elif tile == ".":
+                draw_color_sprite(display, ground, world_x, world_y)
+                pass
+    
+            elif tile == "@":
+                draw_color_sprite(display, player, world_x, world_y)
+                player_x = world_x
+                player_y = world_y
+    
+    show_display(oled)
 
 
 
