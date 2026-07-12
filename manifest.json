@@ -50,7 +50,7 @@
       "url": "https://raw.githubusercontent.com/pixelForge-png/pixelforge-updates/main/games/pixel_bomber.py"
     },
     {
-      "id": "pixel_adventure",
+      "id": "test_pixel_adventure",
       "title": "pixel_adventure",
       "file": "games/pixel_adventure.py",
       "module": "games.pixel_adventure",
