@@ -54,7 +54,7 @@
       "title": "pixel_adventure",
       "file": "games/pixel_adventure.py",
       "module": "games.pixel_adventure",
-      "version": 4,
+      "version": 5,
       "display_version": "1.0",
       "channel": "dev",
       "mode": "singleplayer",
