@@ -51,7 +51,7 @@ ground = [
 
 TILE_SIZE = 8
 
-for tile_y, row in enumerate(level_1):
+for tile_y, row in enumerate(map):
     for tile_x, tile in enumerate(row):
         world_x = tile_x * TILE_SIZE
         world_y = tile_y * TILE_SIZE
