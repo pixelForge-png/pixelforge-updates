@@ -69,7 +69,7 @@ for tile_y, row in enumerate(level_1):
             player_x = world_x
             player_y = world_y
 
-oled.show()
+show_display(oled)
 
 
 
