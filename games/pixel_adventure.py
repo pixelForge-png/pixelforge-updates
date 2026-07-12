@@ -51,7 +51,7 @@ ground = [
 
 TILE_SIZE = 8
 
-def main(oled_from_launcher, controls, settings):
+def main(oled, controls, settings):
 
     for tile_y, row in enumerate(map):
         for tile_x, tile in enumerate(row):
