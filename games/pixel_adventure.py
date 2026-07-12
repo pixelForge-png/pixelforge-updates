@@ -82,6 +82,9 @@ def load_map():
             if tile == "w":
                 walls.append([world_x, world_y])
 
+            elif tile == "c":
+                walls.append([world_x, world_y])
+
             elif tile == "@":
                 player_x = world_x
                 player_y = world_y
@@ -138,6 +141,14 @@ def main(oled, controls, settings):
                     draw_color_sprite(
                         oled,
                         wall,
+                        world_x,
+                        world_y
+                    )
+
+                elif tile == "c":
+                    draw_color_sprite(
+                        oled,
+                        cracked_wall,
                         world_x,
                         world_y
                     )
