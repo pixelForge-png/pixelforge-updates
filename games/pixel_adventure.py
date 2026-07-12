@@ -109,14 +109,80 @@ def touches_wall(test_x, test_y):
 
     return False
 
+def draw_map_tile(oled, tile_x, tile_y):
+    tile = map[tile_y][tile_x]
+
+    screen_x = tile_x * TILE_SIZE
+    screen_y = tile_y * TILE_SIZE
+
+    if tile == "w":
+        draw_color_sprite(
+            oled,
+            wall,
+            screen_x,
+            screen_y
+        )
+
+    elif tile == "c":
+        draw_color_sprite(
+            oled,
+            cracked_wall,
+            screen_x,
+            screen_y
+        )
+
+    else:
+        # Both "." and "@" have ground underneath.
+        draw_color_sprite(
+            oled,
+            ground,
+            screen_x,
+            screen_y
+        )
+
+def draw_full_map(oled):
+    for tile_y, row in enumerate(map):
+        for tile_x, tile in enumerate(row):
+            draw_map_tile(oled, tile_x, tile_y)
+
+def restore_player_area(oled, x, y):
+    left_tile = x // TILE_SIZE
+    right_tile = (x + TILE_SIZE - 1) // TILE_SIZE
+
+    top_tile = y // TILE_SIZE
+    bottom_tile = (y + TILE_SIZE - 1) // TILE_SIZE
+
+    for tile_y in range(top_tile, bottom_tile + 1):
+        for tile_x in range(left_tile, right_tile + 1):
+            if (
+                0 <= tile_y < len(map) and
+                0 <= tile_x < len(map[tile_y])
+            ):
+                draw_map_tile(oled, tile_x, tile_y)
+
 
 def main(oled, controls, settings):
     global player_x, player_y
 
     load_map()
 
+    oled.fill(BLACK)
+    draw_full_map(oled)
+
+    draw_color_sprite(
+        oled,
+        player,
+        player_x,
+        player_y
+    )
+
+    show_display(oled)
+
     while True:
         left, right, up, down = controls["joystick"]()
+
+        old_x = player_x
+        old_y = player_y
 
         new_x = player_x
         new_y = player_y
@@ -137,46 +203,24 @@ def main(oled, controls, settings):
         if not touches_wall(player_x, new_y):
             player_y = new_y
 
-        oled.fill(BLACK)
+        # Only redraw if the player actually moved.
+        if player_x != old_x or player_y != old_y:
+            restore_player_area(
+                oled,
+                old_x,
+                old_y
+            )
 
-        for tile_y, row in enumerate(map):
-            for tile_x, tile in enumerate(row):
-                world_x = tile_x * TILE_SIZE
-                world_y = tile_y * TILE_SIZE
+            draw_color_sprite(
+                oled,
+                player,
+                player_x,
+                player_y
+            )
 
-                if tile == "w":
-                    draw_color_sprite(
-                        oled,
-                        wall,
-                        world_x,
-                        world_y
-                    )
+            show_display(oled)
 
-                elif tile == "c":
-                    draw_color_sprite(
-                        oled,
-                        cracked_wall,
-                        world_x,
-                        world_y
-                    )
-
-                else:
-                    draw_color_sprite(
-                        oled,
-                        ground,
-                        world_x,
-                        world_y
-                    )
-
-        draw_color_sprite(
-            oled,
-            player,
-            player_x,
-            player_y
-        )
-
-        show_display(oled)
-        time.sleep(0.02)
+        time.sleep(0.01)
 
 
 
