@@ -64,6 +64,7 @@ GAME_PALETTE = {
     "F": color565(255, 120, 0),
     "G": BOSS_GHOST,
     "H": HEALTH_GREEN,
+    "B": Black,
 }
 
 def show_display(display):
