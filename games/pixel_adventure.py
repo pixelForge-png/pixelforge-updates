@@ -51,7 +51,7 @@ ground = [
 
 TILE_SIZE = 8
 
-def main():
+def main(oled_from_launcher, controls, settings):
 
     for tile_y, row in enumerate(map):
         for tile_x, tile in enumerate(row):
@@ -59,15 +59,15 @@ def main():
             world_y = tile_y * TILE_SIZE
     
             if tile == "w":
-                draw_color_sprite(display, wall, world_x, world_y)
+                draw_color_sprite(oled, wall, world_x, world_y)
                 pass
     
             elif tile == ".":
-                draw_color_sprite(display, ground, world_x, world_y)
+                draw_color_sprite(oled, ground, world_x, world_y)
                 pass
     
             elif tile == "@":
-                draw_color_sprite(display, player, world_x, world_y)
+                draw_color_sprite(oled, player, world_x, world_y)
                 player_x = world_x
                 player_y = world_y
     
