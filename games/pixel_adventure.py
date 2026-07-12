@@ -11,13 +11,13 @@ from helpers.pixel_adventure_helper import (
 )
 
 
-map: [
+map = [
   ".......w",
   "@.....ww",
   ".......w"
 ]
 
-wall: [
+wall = [
     "99999199",
     "99991199",
     "99111199",
@@ -27,4 +27,49 @@ wall: [
     "19911911",
     "99919991"
 ]
-player
+player = [
+    "11111111",
+    "11111111",
+    "11111111",
+    "11111111",
+    "11111111",
+    "11111111",
+    "11111111",
+    "11111111"
+]
+
+ground = [
+    "00000000",
+    "01000000",
+    "00000100",
+    "00001110",
+    "00000100",
+    "00000000",
+    "01000000",
+    "00000010",
+]
+
+TILE_SIZE = 8
+
+for tile_y, row in enumerate(level_1):
+    for tile_x, tile in enumerate(row):
+        world_x = tile_x * TILE_SIZE
+        world_y = tile_y * TILE_SIZE
+
+        if tile == "w":
+            draw_color_sprite(wall, world_x, world_y)
+            pass
+
+        elif tile == ".":
+            draw_color_sprite(ground, world_x, world_y)
+            pass
+
+        elif tile == "@":
+            draw_color_sprite(player, world_x, world_y)
+            player_x = world_x
+            player_y = world_y
+
+oled.show()
+
+
+
