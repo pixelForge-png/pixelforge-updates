@@ -1,3 +1,8 @@
+from machine import Pin
+import random
+import time
+from helpers.buzzer_sounds import sound
+
 
 # -----------------------------
 # RGB565 colors
