@@ -3,6 +3,11 @@ import random
 import time
 from helpers.buzzer_sounds import sound
 
+# Screen size used by the color version. Change if your display is different.
+SCREEN_W = 160
+SCREEN_H = 80
+
+
 
 # -----------------------------
 # RGB565 colors
