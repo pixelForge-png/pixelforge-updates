@@ -42,6 +42,70 @@ MONSTER_MOVE_DELAY = 55
 PLAYER_ATTACK_LENGTH = 120
 PLAYER_ATTACK_COOLDOWN = 160
 
+possible_monsters = [
+    "slime",
+    "goblin",
+    "archer"
+]
+
+MONSTER_TYPES = {
+    "goblin": {
+        "health": 3,
+        "speed": 1,
+        "vision": 56,
+        "movement_type": "chase",
+        "attack_type": "slash"
+    },
+    "slime": {
+        "health": 5,
+        "speed": 1,
+        "vision": 32,
+        "movement_type": "chase",
+        "attack_type": "lunge"
+    },
+    "archer": {
+        "health": 2,
+        "speed": 1,
+        "vision": 80,
+        "movement_type": "keep_distance",
+        "attack_type": "arrow"
+    }
+}
+ATTACK_TYPES = {
+    "slash": {
+        "distance": 10,
+        "cooldown": 850,
+        "length": 180,
+        "damage": 1
+    },
+
+    "lunge": {
+        "distance": 24,
+        "cooldown": 1200,
+        "length": 300,
+        "damage": 1,
+        "speed": 3
+    },
+    "arrow": {
+        "distance": 64,
+        "cooldown": 1400,
+        "length": 120,
+        "damage": 1,
+        "projectile_speed": 3
+    }
+}
+MOVEMENT_TYPES = {
+    "chase": {
+        "minimum_distance": 8,
+        "maximum_distance": 8
+    },
+
+    "keep_distance": {
+        "minimum_distance": 32,
+        "maximum_distance": 56
+    }
+}
+
 
 # ============================================================
 # SPRITES
@@ -287,6 +351,94 @@ slash_down1 = [
     "00000000",
     "00000000",
     "00000000"
+]
+
+slime_down = [
+    "00000000",
+    "00000000",
+    "00022000",
+    "00222200",
+    "02222220",
+    "02222220",
+    "22222222",
+    "22222222"
+]
+
+slime_up = [
+    "00000000",
+    "00000000",
+    "00022000",
+    "00222200",
+    "02222220",
+    "02222220",
+    "22222222",
+    "22222222"
+]
+
+slime_left = [
+    "00000000",
+    "00000000",
+    "00022000",
+    "00222200",
+    "02222220",
+    "02222220",
+    "22222222",
+    "22222222"
+]
+
+slime_right = [
+    "00000000",
+    "00000000",
+    "00022000",
+    "00222200",
+    "02222220",
+    "02222220",
+    "22222222",
+    "22222222"
+]
+
+archer_down = [
+    "00DDDD00",
+    "0D9999D0",
+    "D966669D",
+    "D999999D",
+    "0D3333D0",
+    "D333333D",
+    "03300330",
+    "0DD00DD0"
+]
+
+archer_up = [
+    "00DDDD00",
+    "0D9999D0",
+    "D999999D",
+    "D999999D",
+    "0D3333D0",
+    "D333333D",
+    "03300330",
+    "0DD00DD0"
+]
+
+archer_left = [
+    "00DDDD00",
+    "0D999D00",
+    "D9699D00",
+    "D9999DD0",
+    "0D33333D",
+    "D3333330",
+    "03300330",
+    "0DD00DD0"
+]
+
+archer_right = [
+    "00DDDD00",
+    "00D999D0",
+    "00D9969D",
+    "0DD9999D",
+    "D33333D0",
+    "0333333D",
+    "03300330",
+    "0DD00DD0"
 ]
 
 
@@ -545,13 +697,26 @@ def clear_line_of_sight(world, start_x, start_y, end_x, end_y):
 # MONSTER CREATION AND AI
 # ============================================================
 
-def create_monster(tile_x, tile_y):
+def create_monster(tile_x, tile_y, monster_type):
     now = time.ticks_ms()
 
+    monster_settings = MONSTER_TYPES[monster_type]
+    attack_type = monster_settings["attack_type"]
+    attack_settings = ATTACK_TYPES[attack_type]
+
     return {
+        "type": monster_type,
+
         "x": tile_x * TILE_SIZE,
         "y": tile_y * TILE_SIZE,
-        "health": MONSTER_HEALTH,
+
+        "health": monster_settings["health"],
+        "speed": monster_settings["speed"],
+        "vision": monster_settings["vision"],
+        "attack_type": attack_type,
+        "movement_type": monster_settings["movement_type"],
+        "attack_created_effect": False,
+
         "facing": "down",
 
         "wander_direction": "down",
@@ -564,7 +729,11 @@ def create_monster(tile_x, tile_y):
         "attack_start": 0,
         "attack_direction": "down",
         "attack_hit_player": False,
-        "last_attack_end": time.ticks_add(now, -MONSTER_ATTACK_COOLDOWN),
+
+        "last_attack_end": time.ticks_add(
+            now,
+            -attack_settings["cooldown"]
+        ),
     }
 
 
@@ -578,9 +747,9 @@ def monster_can_see_player(world, monster, player_x, player_y):
     dx = player_x - monster["x"]
     dy = player_y - monster["y"]
 
-    if abs(dx) > MONSTER_VISION_DISTANCE:
+    if abs(dx) > monster["vision"]:
         return False
-    if abs(dy) > MONSTER_VISION_DISTANCE:
+    if abs(dy) > monster["vision"]:
         return False
 
     return clear_line_of_sight(
@@ -605,6 +774,83 @@ def choose_chase_direction(monster, player_x, player_y):
         return "down"
     return "up"
 
+def choose_retreat_direction(monster, player_x, player_y):
+    dx = player_x - monster["x"]
+    dy = player_y - monster["y"]
+
+    if abs(dx) > abs(dy):
+        if dx > 0:
+            return "left"
+        return "right"
+
+    if dy > 0:
+        return "up"
+    return "down"
+
+def choose_keep_distance_direction(
+    monster,
+    player_x,
+    player_y
+):
+    movement_settings = MOVEMENT_TYPES["keep_distance"]
+
+    minimum_distance = movement_settings["minimum_distance"]
+    maximum_distance = movement_settings["maximum_distance"]
+
+    dx = player_x - monster["x"]
+    dy = player_y - monster["y"]
+
+    distance = abs(dx) + abs(dy)
+
+    horizontally_aligned = abs(dy) <= 5
+    vertically_aligned = abs(dx) <= 5
+
+    # Player is too close: back away.
+    if distance < minimum_distance:
+        return choose_retreat_direction(
+            monster,
+            player_x,
+            player_y
+        )
+
+    # Player is too far away: move closer.
+    if distance > maximum_distance:
+        return choose_chase_direction(
+            monster,
+            player_x,
+            player_y
+        )
+
+    # The archer is already lined up for a straight shot.
+    if horizontally_aligned or vertically_aligned:
+        return None
+
+    # Good distance, but not lined up.
+    # Move along the smaller gap to create a straight shot.
+    if abs(dx) < abs(dy):
+        if dx > 0:
+            return "right"
+        return "left"
+
+    if dy > 0:
+        return "down"
+    return "up"
+
+
+def choose_monster_move_direction(monster, player_x, player_y):
+    if monster["movement_type"] == "chase":
+        return choose_chase_direction(
+            monster,
+            player_x,
+            player_y
+        )
+
+    elif monster["movement_type"] == "keep_distance":
+        return choose_keep_distance_direction(
+            monster,
+            player_x,
+            player_y
+        )
 
 def proposed_step(x, y, direction, speed):
     if direction == "up":
@@ -631,12 +877,15 @@ def position_hits_other_monster(monster, proposed_x, proposed_y, monsters):
 
 
 def monster_is_in_attack_range(monster, player_x, player_y):
+    attack_settings = ATTACK_TYPES[monster["attack_type"]]
+
+    attack_distance = attack_settings["distance"]
     dx = player_x - monster["x"]
     dy = player_y - monster["y"]
 
     # Attack only when mostly aligned on one axis.
-    horizontally_aligned = abs(dy) <= 5 and abs(dx) <= MONSTER_ATTACK_DISTANCE
-    vertically_aligned = abs(dx) <= 5 and abs(dy) <= MONSTER_ATTACK_DISTANCE
+    horizontally_aligned = abs(dy) <= 5 and abs(dx) <= attack_distance
+    vertically_aligned = abs(dx) <= 5 and abs(dy) <= attack_distance
 
     return horizontally_aligned or vertically_aligned
 
@@ -652,12 +901,16 @@ def begin_monster_attack(monster, player_x, player_y, now):
     monster["attack_start"] = now
     monster["attack_direction"] = monster["facing"]
     monster["attack_hit_player"] = False
+    monster["attack_created_effect"] = False
 
 
-def update_monster_attack(monster, player_x, player_y, player_health, now):
+def update_slash_attack(monster, player_x, player_y, player_health, now):
+    attack_settings = ATTACK_TYPES["slash"]
+    attack_length = attack_settings["length"]
+    damage = attack_settings["damage"]
     elapsed = time.ticks_diff(now, monster["attack_start"])
 
-    if elapsed >= MONSTER_ATTACK_LENGTH:
+    if elapsed >= attack_length:
         monster["attacking"] = False
         monster["state"] = "chase"
         monster["last_attack_end"] = now
@@ -670,7 +923,7 @@ def update_monster_attack(monster, player_x, player_y, player_health, now):
     )
 
     # Damage is active during the middle and final parts of the swing.
-    damage_active = elapsed >= MONSTER_ATTACK_LENGTH // 3
+    damage_active = elapsed >= attack_length // 3
 
     if (
         damage_active and
@@ -680,16 +933,223 @@ def update_monster_attack(monster, player_x, player_y, player_health, now):
             player_x, player_y, TILE_SIZE, TILE_SIZE
         )
     ):
-        player_health -= 1
+        player_health -= damage
         monster["attack_hit_player"] = True
 
     return player_health
 
+def update_lunge_attack(
+    world,
+    monster,
+    monsters,
+    player_x,
+    player_y,
+    player_health,
+    now
+):
+    attack_settings = ATTACK_TYPES["lunge"]
 
-def update_monster(world, monster, monsters, player_x, player_y, player_health, now):
+    attack_length = attack_settings["length"]
+    lunge_speed = attack_settings["speed"]
+    damage = attack_settings["damage"]
+
+    elapsed = time.ticks_diff(now, monster["attack_start"])
+
+    if elapsed >= attack_length:
+        monster["attacking"] = False
+        monster["state"] = "chase"
+        monster["last_attack_end"] = now
+        return player_health
+
+    proposed_x, proposed_y = proposed_step(
+        monster["x"],
+        monster["y"],
+        monster["attack_direction"],
+        lunge_speed
+    )
+
+    blocked_by_wall = touches_wall(
+        world,
+        proposed_x,
+        proposed_y
+    )
+
+    blocked_by_monster = position_hits_other_monster(
+        monster,
+        proposed_x,
+        proposed_y,
+        monsters
+    )
+
+    if not blocked_by_wall and not blocked_by_monster:
+        monster["x"] = proposed_x
+        monster["y"] = proposed_y
+
+    if (
+        not monster["attack_hit_player"] and
+        rectangles_overlap(
+            monster["x"],
+            monster["y"],
+            TILE_SIZE,
+            TILE_SIZE,
+            player_x,
+            player_y,
+            TILE_SIZE,
+            TILE_SIZE
+        )
+    ):
+        player_health -= damage
+        monster["attack_hit_player"] = True
+
+    return player_health
+
+def draw_enemy_projectiles(
+    oled,
+    enemy_projectiles,
+    camera_x,
+    camera_y
+):
+    for projectile in enemy_projectiles:
+        screen_x = projectile["x"] - camera_x
+        screen_y = projectile["y"] - camera_y
+
+        if (
+            screen_x < -4 or screen_x >= SCREEN_WIDTH or
+            screen_y < -4 or screen_y >= SCREEN_HEIGHT
+        ):
+            continue
+
+        direction = projectile["direction"]
+
+        if direction == "left" or direction == "right":
+            oled.fill_rect(screen_x, screen_y + 2, 5, 2, YELLOW)
+        else:
+            oled.fill_rect(screen_x + 2, screen_y, 2, 5, YELLOW)
+
+def update_arrow_attack(
+    monster,
+    enemy_projectiles,
+    player_health,
+    now
+):
+    attack_settings = ATTACK_TYPES["arrow"]
+    elapsed = time.ticks_diff(now, monster["attack_start"])
+
+    if not monster["attack_created_effect"]:
+        arrow_x, arrow_y = slash_position(
+            monster["x"],
+            monster["y"],
+            monster["attack_direction"]
+        )
+
+        enemy_projectiles.append({
+            "x": arrow_x,
+            "y": arrow_y,
+            "direction": monster["attack_direction"],
+            "speed": attack_settings["projectile_speed"],
+            "damage": attack_settings["damage"]
+        })
+
+        monster["attack_created_effect"] = True
+
+    if elapsed >= attack_settings["length"]:
+        monster["attacking"] = False
+        monster["state"] = "chase"
+        monster["last_attack_end"] = now
+
+    return player_health
+
+def update_enemy_projectiles(
+    world,
+    enemy_projectiles,
+    player_x,
+    player_y,
+    player_health
+):
+    remaining_projectiles = []
+
+    for projectile in enemy_projectiles:
+        new_x, new_y = proposed_step(
+            projectile["x"],
+            projectile["y"],
+            projectile["direction"],
+            projectile["speed"]
+        )
+
+        if touches_wall(world, new_x, new_y):
+            continue
+
+        if rectangles_overlap(
+            new_x,
+            new_y,
+            4,
+            4,
+            player_x,
+            player_y,
+            TILE_SIZE,
+            TILE_SIZE
+        ):
+            player_health -= projectile["damage"]
+            continue
+
+        projectile["x"] = new_x
+        projectile["y"] = new_y
+
+        remaining_projectiles.append(projectile)
+
+    enemy_projectiles[:] = remaining_projectiles
+
+    return player_health
+
+def update_monster_attack(
+    world,
+    monster,
+    monsters,
+    enemy_projectiles,
+    player_x,
+    player_y,
+    player_health,
+    now
+):
+    if monster["attack_type"] == "slash":
+        return update_slash_attack(
+            monster,
+            player_x,
+            player_y,
+            player_health,
+            now
+        )
+
+    elif monster["attack_type"] == "lunge":
+        return update_lunge_attack(
+            world,
+            monster,
+            monsters,
+            player_x,
+            player_y,
+            player_health,
+            now
+        )
+    
+    elif monster["attack_type"] == "arrow":
+        return update_arrow_attack(
+            monster,
+            enemy_projectiles,
+            player_health,
+            now
+        )
+
+    return player_health
+
+
+def update_monster(world, monster, monsters, enemy_projectiles, player_x, player_y, player_health, now):
+    attack_settings = ATTACK_TYPES[monster["attack_type"]]
     if monster["attacking"]:
         player_health = update_monster_attack(
+            world,
             monster,
+            monsters,
+            enemy_projectiles,
             player_x,
             player_y,
             player_health,
@@ -706,7 +1166,7 @@ def update_monster(world, monster, monsters, player_x, player_y, player_health, 
         if monster_is_in_attack_range(monster, player_x, player_y):
             cooldown_ready = (
                 time.ticks_diff(now, monster["last_attack_end"])
-                >= MONSTER_ATTACK_COOLDOWN
+                >= attack_settings["cooldown"]
             )
 
             if cooldown_ready:
@@ -728,14 +1188,17 @@ def update_monster(world, monster, monsters, player_x, player_y, player_health, 
         move_direction = monster["wander_direction"]
         monster["wander_steps"] -= 1
     else:
-        move_direction = choose_chase_direction(monster, player_x, player_y)
+        move_direction = choose_monster_move_direction(monster, player_x, player_y)
+        
+        if move_direction is None:
+            return player_health
         monster["facing"] = move_direction
 
     proposed_x, proposed_y = proposed_step(
         monster["x"],
         monster["y"],
         move_direction,
-        MONSTER_SPEED
+        monster["speed"]
     )
 
     blocked_by_wall = touches_wall(world, proposed_x, proposed_y)
@@ -879,15 +1342,38 @@ def draw_monster(oled, monster, camera_x, camera_y):
     ):
         return
 
+    if monster["type"] == "goblin":
+        up_sprite = monster_up
+        down_sprite = monster_down
+        left_sprite = monster_left
+        right_sprite = monster_right
+
+    elif monster["type"] == "slime":
+        up_sprite = slime_up
+        down_sprite = slime_down
+        left_sprite = slime_left
+        right_sprite = slime_right
+        
+    elif monster["type"] == "archer":
+        up_sprite = archer_up
+        down_sprite = archer_down
+        left_sprite = archer_left
+        right_sprite = archer_right
+
     sprite = sprite_for_direction(
         monster["facing"],
-        monster_up,
-        monster_down,
-        monster_left,
-        monster_right
+        up_sprite,
+        down_sprite,
+        left_sprite,
+        right_sprite
     )
 
-    draw_color_sprite(oled, sprite, screen_x, screen_y)
+    draw_color_sprite(
+        oled,
+        sprite,
+        screen_x,
+        screen_y
+    )
 
 
 def draw_attack(oled, world_x, world_y, direction, start_time, length, camera_x, camera_y, now):
@@ -929,6 +1415,7 @@ def draw_scene(
     player_facing,
     player_health,
     monsters,
+    enemy_projectiles,
     player_attack,
     camera_x,
     camera_y,
@@ -958,7 +1445,8 @@ def draw_scene(
 
     # Draw monster sword attacks above bodies.
     for monster in monsters:
-        if monster["attacking"]:
+        if monster["attacking"] and monster["attack_type"] == "slash":
+            attack_settings = ATTACK_TYPES[monster["attack_type"]]
             attack_x, attack_y = slash_position(
                 monster["x"],
                 monster["y"],
@@ -971,11 +1459,17 @@ def draw_scene(
                 attack_y,
                 monster["attack_direction"],
                 monster["attack_start"],
-                MONSTER_ATTACK_LENGTH,
+                attack_settings["length"],
                 camera_x,
                 camera_y,
                 now
             )
+    draw_enemy_projectiles(
+        oled,
+        enemy_projectiles,
+        camera_x,
+        camera_y
+    )
 
     # Draw player sword last so it is very easy to see.
     if player_attack["active"]:
@@ -1025,7 +1519,8 @@ def create_game():
             continue
 
         used_tiles.add(tile_position)
-        monsters.append(create_monster(monster_tile_x, monster_tile_y))
+        monster_type = random.choice(possible_monsters)
+        monsters.append(create_monster(monster_tile_x, monster_tile_y, monster_type))
 
     return world, player_x, player_y, monsters
 
@@ -1052,6 +1547,8 @@ def main(oled, controls, settings):
     button_G = ButtonAdapter(controls["green"])
 
     while True:
+        enemy_projectiles = []
+
         world, player_x, player_y, monsters = create_game()
 
         player_health = PLAYER_MAX_HEALTH
@@ -1134,11 +1631,20 @@ def main(oled, controls, settings):
                     world,
                     monster,
                     monsters,
+                    enemy_projectiles,
                     player_x,
                     player_y,
                     player_health,
                     now
                 )
+                
+            player_health = update_enemy_projectiles(
+                world,
+                enemy_projectiles,
+                player_x,
+                player_y,
+                player_health
+            )
 
             # Remove monsters only after every update has finished.
             living_monsters = []
@@ -1157,6 +1663,7 @@ def main(oled, controls, settings):
                 player_facing,
                 player_health,
                 monsters,
+                enemy_projectiles,
                 player_attack,
                 camera_x,
                 camera_y,
@@ -1170,5 +1677,6 @@ def main(oled, controls, settings):
                 time.sleep_ms(remaining)
 
         show_death_screen(oled, button_G)
+
 
 
